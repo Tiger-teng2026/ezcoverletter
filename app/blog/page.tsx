@@ -3,19 +3,31 @@ import Link from 'next/link'
 import { SiteHeader } from '@/components/site-header'
 import { BlogCta } from '@/components/blog-cta'
 import { formatPostDate, getAllPosts } from '@/lib/blog'
-import { CONTACT_EMAIL } from '@/lib/constants'
+import { CONTACT_EMAIL, SITE_URL } from '@/lib/constants'
 
 export const metadata: Metadata = {
   title: 'Blog — EzCoverLetter',
   description:
     'Practical guides on ATS-friendly cover letters, common mistakes, and job-application tips from EzCoverLetter.',
+  alternates: {
+    canonical: `${SITE_URL}/blog`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: 'Blog — EzCoverLetter',
     description:
       'Practical guides on ATS-friendly cover letters, common mistakes, and job-application tips.',
     type: 'website',
+    url: `${SITE_URL}/blog`,
+    siteName: 'EzCoverLetter',
   },
 }
+
+/** Build-time static generation for crawler-friendly HTML. */
+export const dynamic = 'force-static'
 
 export default function BlogIndexPage() {
   const posts = getAllPosts()

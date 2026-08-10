@@ -4,11 +4,14 @@ import { notFound } from 'next/navigation'
 import { SiteHeader } from '@/components/site-header'
 import { BlogCta } from '@/components/blog-cta'
 import { formatPostDate, getAllPostSlugs, getPostBySlug } from '@/lib/blog'
-import { CONTACT_EMAIL } from '@/lib/constants'
+import { CONTACT_EMAIL, SITE_URL } from '@/lib/constants'
 
 type PageProps = {
   params: Promise<{ slug: string }>
 }
+
+/** Build-time static generation for crawler-friendly HTML. */
+export const dynamic = 'force-static'
 
 export async function generateStaticParams() {
   return getAllPostSlugs().map((slug) => ({ slug }))
@@ -18,16 +21,27 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params
   const post = await getPostBySlug(slug)
   if (!post) {
-    return { title: 'Post not found — EzCoverLetter' }
+    return { title: 'Post not found — EzCoverLetter', robots: { index: false } }
   }
+
+  const url = `${SITE_URL}/blog/${post.slug}`
 
   return {
     title: `${post.title} — EzCoverLetter`,
     description: post.description || undefined,
+    alternates: {
+      canonical: url,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
     openGraph: {
       title: post.title,
       description: post.description || undefined,
       type: 'article',
+      url,
+      siteName: 'EzCoverLetter',
       ...(post.date ? { publishedTime: post.date } : {}),
     },
     twitter: {

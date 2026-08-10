@@ -1,16 +1,22 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { SITE_URL } from '@/lib/constants'
 import './globals.css'
 
 const _geistSans = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'EzCoverLetter — Tailor Cover Letters in 10 Seconds',
   description:
     'No AI buzzwords. Free to generate ATS-ready cover letters. Upgrade for polished PDF & Word exports.',
   generator: 'v0.app',
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
     icon: [
       {
