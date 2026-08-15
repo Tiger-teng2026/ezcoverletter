@@ -17,6 +17,11 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  // Google Search Console HTML tag verification
+  // Replace the content string in Search Console if you regenerate the meta tag.
+  verification: {
+    google: 'SjjVZl7Io6Li7oJoBqem3dmBeSLOnyhKfbIoOEJAMVs',
+  },
   icons: {
     icon: [
       {
