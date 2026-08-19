@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation'
 import { SiteHeader } from '@/components/site-header'
 import { BlogCta } from '@/components/blog-cta'
 import { formatPostDate, getAllPostSlugs, getPostBySlug } from '@/lib/blog'
-import { CONTACT_EMAIL, SITE_URL } from '@/lib/constants'
+import { SiteFooter } from '@/components/site-footer'
+import { SITE_URL } from '@/lib/constants'
 
 type PageProps = {
   params: Promise<{ slug: string }>
@@ -103,22 +104,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
       </main>
 
-      <footer className="border-t border-border/60">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-[11px] text-muted-foreground sm:flex-row">
-          <p>© {new Date().getFullYear()} EzCoverLetter</p>
-          <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            <a href={`mailto:${CONTACT_EMAIL}`} className="transition-colors hover:text-foreground">
-              {CONTACT_EMAIL}
-            </a>
-            <Link href="/privacy" className="transition-colors hover:text-foreground">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="transition-colors hover:text-foreground">
-              Terms of Service
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

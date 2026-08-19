@@ -1,8 +1,8 @@
 import { ShieldCheck } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
+import { SiteFooter } from '@/components/site-footer'
 import { Generator } from '@/components/generator'
 import { UpgradeButton } from '@/components/upgrade-button'
-import { CONTACT_EMAIL } from '@/lib/constants'
 
 export default function Page() {
   return (
@@ -49,33 +49,7 @@ export default function Page() {
         </section>
       </main>
 
-      <footer className="border-t border-border/60">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-[11px] text-muted-foreground sm:flex-row sm:gap-4">
-          <p>© {new Date().getFullYear()} EzCoverLetter</p>
-
-          <nav
-            aria-label="Legal"
-            className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1"
-          >
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="transition-colors hover:text-foreground"
-            >
-              {CONTACT_EMAIL}
-            </a>
-            <a href="/privacy" className="transition-colors hover:text-foreground">
-              Privacy Policy
-            </a>
-            <a href="/terms" className="transition-colors hover:text-foreground">
-              Terms of Service
-            </a>
-          </nav>
-
-          <p className="text-center sm:text-right">
-            Written by you, assisted by AI — never the other way around.
-          </p>
-        </div>
-      </footer>
+      <SiteFooter tagline="Written by you, assisted by AI — never the other way around." />
     </div>
   )
 }

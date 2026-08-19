@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SiteHeader } from '@/components/site-header'
+import { SiteFooter } from '@/components/site-footer'
 import { CONTACT_EMAIL } from '@/lib/constants'
 
 export const metadata = {
@@ -37,6 +38,7 @@ export default function PrivacyPage() {
           ← Back to home
         </Link>
       </main>
+      <SiteFooter />
     </div>
   )
 }
