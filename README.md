@@ -1,8 +1,8 @@
-# EzCoverLetter - AI ATS-Optimized Cover Letter Generator
+# EzCoverLetter — AI Job Application Assistant for ATS-Friendly Cover Letters
 
 **Official site:** [https://ezcoverletter.xyz](https://ezcoverletter.xyz)
 
-EzCoverLetter helps job seekers generate **human-sounding, ATS-ready cover letters** in seconds. Paste your resume and a job description, get a tailored draft that mirrors role keywords, leads with measurable impact, and exports cleanly for applications.
+EzCoverLetter helps job seekers improve applications with a **Job Match Score** and **human-sounding, ATS-ready cover letters**. Paste your resume and a job description, see how you fit the role, then generate a tailored draft that mirrors role keywords, leads with measurable impact, and exports cleanly.
 
 ---
 
@@ -57,9 +57,11 @@ Use this practical checklist before you hit Apply:
 
 ## What EzCoverLetter does
 
-- **Tailors** a cover letter to a specific job description  
+- **Scores** how well your resume matches a specific job description (Job Match Score)  
+- **Tailors** an ATS-friendly cover letter to that posting  
 - **Avoids** generic AI buzzword sludge where possible  
-- **Supports** free generation with optional polished **PDF / Word** export (Pro)  
+- **Free:** Job Match Score, cover letter generation, and Copy  
+- **Pro Export:** $4.99 one-time for PDF and Word  
 - Ships a small **blog** of ATS and application tips for ongoing SEO and education  
 
 Built as a Next.js app with Markdown-powered blog posts under `content/blog`.
@@ -73,7 +75,7 @@ pnpm install
 pnpm dev
 ```
 
-Set `DEEPSEEK_API_KEY` in `.env.local` for letter generation.
+Set `DEEPSEEK_API_KEY` in `.env.local` for Job Match Score and cover letter generation.
 
 Useful routes:
 
@@ -94,7 +96,7 @@ Useful routes:
 | Show 1–3 quantified wins | Rely on empty adjectives |
 | Use plain, linear formatting | Use tables / multi-column PDFs |
 | Customize the middle paragraph per role | Reuse one letter for every company |
-| Verify contact details before export | Leave `[placeholders]` in paid exports |
+| Verify contact details before Pro Export | Leave `[placeholders]` in PDF/Word files |
 
 For deeper reading, see the in-product blog at [ezcoverletter.xyz/blog](https://ezcoverletter.xyz/blog).
 
@@ -108,4 +110,4 @@ For deeper reading, see the in-product blog at [ezcoverletter.xyz/blog](https://
 
 ---
 
-Tired of rewriting cover letters that never clear ATS? Generate an ATS-optimized draft at **[https://ezcoverletter.xyz](https://ezcoverletter.xyz)**.
+Tired of rewriting cover letters that never clear ATS? Check your Job Match Score and generate an ATS-optimized draft at **[https://ezcoverletter.xyz](https://ezcoverletter.xyz)**.

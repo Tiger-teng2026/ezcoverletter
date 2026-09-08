@@ -1,8 +1,10 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { AlertCircle, Briefcase, Check, Loader2, Sparkles, User } from 'lucide-react'
+import { AlertCircle, Briefcase, Check, Loader2, Sparkles, Target, User } from 'lucide-react'
+import { MatchError, MatchPanel } from '@/components/match-panel'
 import { ResultPanel } from '@/components/result-panel'
+import { parseMatchResult, type JobMatchResult } from '@/lib/match-schema'
 
 const TONES = [
   { id: 'professional', label: 'Professional' },
@@ -73,10 +75,22 @@ export function Generator() {
   const [letter, setLetter] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [matchResult, setMatchResult] = useState<JobMatchResult | null>(null)
+  const [matchSnapshot, setMatchSnapshot] = useState<{ resume: string; job: string } | null>(null)
+  const [isMatching, setIsMatching] = useState(false)
+  const [matchError, setMatchError] = useState<string | null>(null)
   const resultRef = useRef<HTMLDivElement>(null)
+  const matchRef = useRef<HTMLDivElement>(null)
 
-  const canGenerate =
-    resume.trim().length >= MIN_CHARS && job.trim().length >= MIN_CHARS && !isLoading
+  const materialsReady =
+    resume.trim().length >= MIN_CHARS && job.trim().length >= MIN_CHARS
+  const canGenerate = materialsReady && !isLoading && !isMatching
+  const canAnalyze = materialsReady && !isLoading && !isMatching
+  const matchIsStale =
+    !!matchResult &&
+    !!matchSnapshot &&
+    (matchSnapshot.resume !== resume || matchSnapshot.job !== job)
+  const matchForGenerate = matchResult && !matchIsStale ? matchResult : null
 
   async function handleGenerate() {
     if (isLoading) return
@@ -95,7 +109,13 @@ export function Generator() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume, job, tone, highlightKeywords: highlight }),
+        body: JSON.stringify({
+          resume,
+          job,
+          tone,
+          highlightKeywords: highlight,
+          ...(matchForGenerate ? { matchAnalysis: matchForGenerate } : {}),
+        }),
       })
 
       if (!res.ok || !res.body) {
@@ -124,6 +144,55 @@ export function Generator() {
     }
   }
 
+  async function handleAnalyzeMatch() {
+    if (isMatching || isLoading) return
+    setMatchError(null)
+
+    if (resume.trim().length < MIN_CHARS || job.trim().length < MIN_CHARS) {
+      setMatchError('Paste both your resume and the job description (at least 40 characters each).')
+      return
+    }
+
+    setIsMatching(true)
+    matchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+    try {
+      const res = await fetch('/api/match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume, job }),
+      })
+
+      const payload = (await res.json().catch(() => null)) as
+        | JobMatchResult
+        | { error?: string }
+        | null
+
+      if (!res.ok) {
+        const message =
+          payload && 'error' in payload && payload.error
+            ? payload.error
+            : 'Could not score this job match. Please try again.'
+        throw new Error(message)
+      }
+
+      const result = parseMatchResult(payload)
+      if (!result) {
+        throw new Error('Could not read a valid job match score. Please try again.')
+      }
+
+      setMatchResult(result)
+      setMatchSnapshot({ resume, job })
+    } catch (err) {
+      console.log('[v0] Match error:', err)
+      setMatchResult(null)
+      setMatchSnapshot(null)
+      setMatchError(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
+      setIsMatching(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -139,7 +208,7 @@ export function Generator() {
         <Field
           id="resume"
           label="Paste Resume / CV"
-          hint="Put your name on the first line, plus email, phone, and LinkedIn — we autofill Pro export sign-off from these. Include hard metrics (%, $, days)."
+          hint="Put your name on the first line, plus email, phone, and LinkedIn — we autofill Pro Export ($4.99 one-time) sign-off from these. Include hard metrics (%, $, days)."
           icon={<User className="size-3.5 text-primary" aria-hidden="true" />}
           value={resume}
           onChange={setResume}
@@ -160,11 +229,51 @@ export function Generator() {
         />
       </div>
 
+      {/* Optional Job Match Score */}
+      <div ref={matchRef} className="flex flex-col gap-3 scroll-mt-24">
+        <div className="flex flex-col gap-1">
+          <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            Step 2 · Job Match Score
+          </p>
+          <p className="text-[13px] text-muted-foreground">
+            Optional. See how your resume fits this posting — or skip and generate a cover letter
+            below.
+          </p>
+        </div>
+
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={handleAnalyzeMatch}
+            disabled={!canAnalyze}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-5 py-3 text-[13px] font-semibold text-secondary-foreground transition-colors hover:bg-muted disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:w-auto"
+          >
+            {isMatching ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                Scoring match…
+              </>
+            ) : (
+              <>
+                <Target className="size-4 text-primary" aria-hidden="true" />
+                Get Job Match Score
+              </>
+            )}
+          </button>
+          <p className="text-[11px] text-muted-foreground">
+            Does not replace Generate. Cover letters still work without this step.
+          </p>
+        </div>
+
+        {matchError ? <MatchError message={matchError} /> : null}
+        <MatchPanel result={matchResult} isLoading={isMatching} isStale={matchIsStale} />
+      </div>
+
       {/* Options */}
       <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card px-5 py-5 sm:px-6">
         <div className="flex flex-col gap-1">
           <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            Step 2 · Tune the letter
+            Step 3 · Tune the letter
           </p>
         </div>
 
@@ -235,7 +344,7 @@ export function Generator() {
       {/* CTA */}
       <div className="flex flex-col items-center gap-3">
         <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-          Step 3 · Generate
+          Step 4 · Generate
         </p>
         <button
           type="button"
@@ -266,7 +375,9 @@ export function Generator() {
           </p>
         ) : (
           <p className="text-center text-[11px] text-muted-foreground">
-            Free to generate · Powered by DeepSeek AI · ATS-optimized
+            {matchForGenerate
+              ? 'Using your Job Match Score to tailor this letter · Skip match anytime'
+              : 'Free to generate and copy · PDF & Word are Pro Export ($4.99 one-time)'}
           </p>
         )}
       </div>
@@ -274,10 +385,11 @@ export function Generator() {
       <div ref={resultRef} className="scroll-mt-24">
         <div className="mb-3 flex flex-col gap-1">
           <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            Step 4 · Review & export
+            Step 5 · Review & export
           </p>
           <p className="text-[13px] text-muted-foreground">
-            Copy is free. PDF and Word are Pro — with your real sign-off details filled in.
+            Copy is free. PDF and Word are Pro Export ($4.99 one-time) — with your real sign-off
+            details filled in.
           </p>
         </div>
         <ResultPanel letter={letter} isLoading={isLoading} resume={resume} />

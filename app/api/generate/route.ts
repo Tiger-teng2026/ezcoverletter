@@ -1,3 +1,8 @@
+import {
+  formatMatchAnalysisForPrompt,
+  parseMatchResult,
+  type JobMatchResult,
+} from '@/lib/match-schema'
 import { withCanonicalSignOff } from '@/lib/sign-off'
 
 export const maxDuration = 60
@@ -36,15 +41,57 @@ CRITICAL RULES TO FOLLOW:
 6. NO SIGN-OFF: Do NOT include any closing or signature — not "Best regards,", "Best,", "Sincerely,", a name line, phone, email, LinkedIn, or any signature block. End after the CTA paragraph only. The system will append exactly one canonical sign-off after generation.
 `.trim()
 
-function buildSystemPrompt(tone: string, highlightKeywords: boolean) {
+const MATCH_PROMPT_ADDENDUM = `
+JOB MATCH CONTEXT IS PROVIDED.
+Use it only as a lens on the resume — never as a source of new facts:
+- Emphasize matched skills that are clearly evidenced in the resume, using the employer's wording when it is true.
+- Ground the story in the experience-match notes, with concrete resume metrics and projects.
+- Treat suggestions as editing guidance: highlight real proof the candidate already has. Do not invent missing skills, tools, employers, or outcomes.
+- Do not claim skills listed as missing unless they are explicitly present in the resume.
+- Keep the letter specific and human. Avoid generic AI template language and empty claims.
+`.trim()
+
+function buildSystemPrompt(
+  tone: string,
+  highlightKeywords: boolean,
+  matchAnalysis: JobMatchResult | null,
+) {
   return [
     SYSTEM_PROMPT,
     `Tone preference from the user: ${TONE_RULES[tone]}`,
     highlightKeywords
       ? 'Wrap each phrase that is a direct keyword match between the resume and the job description in **double asterisks**. Highlight at most 12 phrases.'
       : 'Do not use any markdown emphasis, asterisks, or headings.',
+    matchAnalysis ? MATCH_PROMPT_ADDENDUM : '',
     'Never invent employers, degrees, metrics, or dates that are not in the resume. Output only the letter body (greeting + paragraphs + CTA) — no commentary and no sign-off.',
-  ].join('\n\n')
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+function buildUserContent(
+  resume: string,
+  job: string,
+  matchAnalysis: JobMatchResult | null,
+) {
+  const parts = [
+    `RESUME / CV:\n${resume}`,
+    `JOB DESCRIPTION:\n${job}`,
+  ]
+
+  if (matchAnalysis) {
+    parts.push(
+      `JOB MATCH ANALYSIS:\n${formatMatchAnalysisForPrompt(matchAnalysis)}`,
+    )
+  }
+
+  parts.push(
+    matchAnalysis
+      ? 'Write the cover letter now. Personalize it using the job match analysis and only facts from the resume.'
+      : 'Write the cover letter now.',
+  )
+
+  return parts.join('\n\n---\n\n')
 }
 
 /** Strip leftover AI placeholders in the body (sign-off is added separately). */
@@ -73,6 +120,9 @@ export async function POST(req: Request) {
   const job = typeof body.job === 'string' ? body.job.slice(0, 12000) : ''
   const tone = typeof body.tone === 'string' && body.tone in TONE_RULES ? body.tone : 'natural'
   const highlightKeywords = body.highlightKeywords === true
+  const matchAnalysis = parseMatchResult(
+    'matchAnalysis' in body ? body.matchAnalysis : undefined,
+  )
 
   if (resume.trim().length < 40 || job.trim().length < 40) {
     return new Response(
@@ -105,11 +155,11 @@ export async function POST(req: Request) {
             messages: [
               {
                 role: 'system',
-                content: buildSystemPrompt(tone, highlightKeywords),
+                content: buildSystemPrompt(tone, highlightKeywords, matchAnalysis),
               },
               {
                 role: 'user',
-                content: `RESUME / CV:\n${resume}\n\n---\n\nJOB DESCRIPTION:\n${job}\n\n---\n\nWrite the cover letter now.`,
+                content: buildUserContent(resume, job, matchAnalysis),
               },
             ],
           }),

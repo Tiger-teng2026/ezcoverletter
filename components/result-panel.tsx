@@ -122,7 +122,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
 
   function requirePro(format: 'Word' | 'PDF') {
     setProHint(
-      `${format} export is a Pro feature. Opening secure checkout to unlock ATS-ready exports with your real sign-off…`,
+      `${format} is part of Pro Export ($4.99 one-time). Opening checkout for PDF and Word with your real sign-off…`,
     )
     openProCheckout()
     window.setTimeout(() => setProHint(null), 5000)
@@ -131,7 +131,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
   function requireContactForExport(): boolean {
     if (!exportReady) {
       setProHint(
-        'Before exporting PDF/Word, fill in your Full Name, Phone, Email, and LinkedIn below. Paid exports never include [placeholder] text.',
+        'Before PDF/Word export, fill in your Full Name, Phone, Email, and LinkedIn below. Pro Export never includes [placeholder] text.',
       )
       window.setTimeout(() => setProHint(null), 6000)
       return false
@@ -188,7 +188,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
           </div>
           {hasContent && (
             <p className="pl-6 text-[11px] text-muted-foreground">
-              Free: Copy · Pro: PDF / Word with real sign-off
+              Free: Copy · Pro Export ($4.99 one-time): PDF / Word
             </p>
           )}
         </div>
@@ -213,7 +213,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             type="button"
             onClick={handleWordClick}
             disabled={!hasContent}
-            title="Pro: Unlock Word export"
+            title="Pro Export ($4.99 one-time): Word"
             className={proButtonClass}
           >
             <Lock className="size-3" aria-hidden="true" />
@@ -228,7 +228,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             type="button"
             onClick={handlePdfClick}
             disabled={!hasContent}
-            title="Pro: Unlock PDF export"
+            title="Pro Export ($4.99 one-time): PDF"
             className={proButtonClass}
           >
             <Lock className="size-3" aria-hidden="true" />
@@ -257,8 +257,8 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             <div className="flex flex-col gap-0.5">
               <p className="text-[13px] font-semibold">Sign-off details for PDF / Word</p>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Autofilled from your resume when possible. Required for Pro exports — Free Copy never
-                uses these fields.
+                Autofilled from your resume when possible. Required for Pro Export ($4.99 one-time) —
+                Free Copy never uses these fields.
               </p>
             </div>
             <p
@@ -322,7 +322,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             <p className="text-sm font-medium">Nothing here yet</p>
             <p className="text-[13px] leading-relaxed text-muted-foreground">
               Paste your resume and job description, then generate. Your letter appears here — with
-              free Copy and Pro PDF/Word exports.
+              free Copy. PDF and Word are Pro Export ($4.99 one-time).
             </p>
           </div>
         )}

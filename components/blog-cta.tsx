@@ -8,7 +8,7 @@ export function BlogCta() {
       className="rounded-2xl border border-border/80 bg-card px-5 py-5 sm:px-6"
     >
       <p className="text-[15px] font-medium leading-relaxed text-foreground">
-        Tired of writing cover letters? Try EZ Cover Letter to pass ATS instantly.
+        Check your Job Match Score, then generate an ATS-friendly cover letter with EzCoverLetter.
       </p>
       <Link
         href="/#generator"

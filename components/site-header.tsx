@@ -9,8 +9,11 @@ export function SiteHeader() {
           <span className="flex size-8 items-center justify-center rounded-lg border border-border bg-card">
             <PenLine className="size-4 text-primary" aria-hidden="true" />
           </span>
-          <span className="text-[15px] font-semibold tracking-tight">
-            EzCoverLetter
+          <span className="flex flex-col leading-none">
+            <span className="text-[15px] font-semibold tracking-tight">EzCoverLetter</span>
+            <span className="mt-0.5 hidden text-[10px] font-medium text-muted-foreground sm:block">
+              ATS-friendly cover letters
+            </span>
           </span>
         </a>
 

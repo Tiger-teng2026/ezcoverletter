@@ -9,13 +9,27 @@ const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'EzCoverLetter — Tailor Cover Letters in 10 Seconds',
+  title: 'EzCoverLetter — AI Job Application Assistant for ATS-Friendly Cover Letters',
   description:
-    'No AI buzzwords. Free to generate ATS-ready cover letters. Upgrade for polished PDF & Word exports.',
+    'EzCoverLetter is an AI job application assistant. Free Job Match Score, cover letter generation, and Copy. Pro Export is $4.99 one-time for PDF and Word.',
   generator: 'v0.app',
   robots: {
     index: true,
     follow: true,
+  },
+  openGraph: {
+    title: 'EzCoverLetter — AI Job Application Assistant for ATS-Friendly Cover Letters',
+    description:
+      'Free Job Match Score, cover letter generation, and Copy. Pro Export is $4.99 one-time for PDF and Word.',
+    type: 'website',
+    url: SITE_URL,
+    siteName: 'EzCoverLetter',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'EzCoverLetter — AI Job Application Assistant for ATS-Friendly Cover Letters',
+    description:
+      'Free Job Match Score, cover letter generation, and Copy. Pro Export is $4.99 one-time for PDF and Word.',
   },
   // Google Search Console HTML tag verification
   // Replace the content string in Search Console if you regenerate the meta tag.

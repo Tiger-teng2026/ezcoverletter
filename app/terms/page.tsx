@@ -13,7 +13,7 @@ export default function TermsPage() {
       <SiteHeader />
       <main className="mx-auto w-full max-w-2xl px-5 py-14">
         <h1 className="text-3xl font-semibold tracking-tight">Terms of Service</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Last updated: August 8, 2026</p>
+        <p className="mt-2 text-sm text-muted-foreground">Last updated: September 9, 2026</p>
 
         <div className="mt-8 space-y-5 text-[15px] leading-relaxed text-muted-foreground">
           <p>
@@ -22,8 +22,9 @@ export default function TermsPage() {
             and for reviewing any generated cover letter before sending it to employers.
           </p>
           <p>
-            Pro features, including Word and PDF export formats, require a paid upgrade processed
-            through Creem. Fees are charged as displayed at checkout. Generated letters are provided
+            Job Match Score, cover letter generation, and Copy are free. Pro Export is a $4.99
+            one-time purchase processed through Creem. It includes Word and PDF export. It is not a
+            subscription. Fees are charged as displayed at checkout. Generated letters are provided
             as-is without guarantee of employment outcomes.
           </p>
           <p>
