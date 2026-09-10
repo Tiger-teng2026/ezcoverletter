@@ -13,13 +13,15 @@ export default function PrivacyPage() {
       <SiteHeader />
       <main className="mx-auto w-full max-w-2xl px-5 py-14">
         <h1 className="text-3xl font-semibold tracking-tight">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Last updated: September 9, 2026</p>
+        <p className="mt-2 text-sm text-muted-foreground">Last updated: September 10, 2026</p>
 
         <div className="mt-8 space-y-5 text-[15px] leading-relaxed text-muted-foreground">
           <p>
             EzCoverLetter processes the resume and job description text you submit to provide Job
             Match Score and cover letter generation. We do not permanently store your resume, job
-            description, or generated letter on our servers for marketing or training purposes.
+            description, or generated letter on our servers for marketing or training purposes. A
+            draft and Pro Export unlock may stay in this browser so you can return after checkout.
+            Clear site data in your browser to remove them.
           </p>
           <p>
             Payments are handled by Creem. Pro Export is a $4.99 one-time purchase for PDF and Word

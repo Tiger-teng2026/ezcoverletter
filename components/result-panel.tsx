@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Download, FileText, Loader2, Lock } from 'lucide-react'
-import { CREEM_CHECKOUT_URL } from '@/lib/constants'
 import { extractContactFromResume } from '@/lib/contact-from-resume'
 import { toFrictionCopyText } from '@/lib/copy-letter'
+import { loadContact, saveContact } from '@/lib/draft-storage'
 import { downloadWordDocument, printLetterAsPdf } from '@/lib/export-letter'
+import { useProAccess } from '@/lib/pro-access'
 import type { SignOffContact } from '@/lib/sign-off'
+import { startProCheckout } from '@/lib/start-checkout'
 
 type Props = {
   letter: string
@@ -33,12 +35,7 @@ function renderLetter(letter: string) {
 }
 
 function openProCheckout() {
-  window.open(CREEM_CHECKOUT_URL, '_blank', 'noopener,noreferrer')
-}
-
-/** Paid unlock hook — keep false until Creem payment verification is wired. */
-function hasProAccess() {
-  return false
+  void startProCheckout()
 }
 
 function ContactInput({
@@ -85,12 +82,22 @@ const proButtonClass =
   'inline-flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-200 transition-colors hover:bg-violet-500/20 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400'
 
 export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
+  const hasProAccess = useProAccess()
   const [copied, setCopied] = useState(false)
   const [proHint, setProHint] = useState<string | null>(null)
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [linkedin, setLinkedin] = useState('')
+  const canSaveContact = useRef(false)
+
+  useEffect(() => {
+    const stored = loadContact()
+    if (stored.fullName) setFullName((prev) => prev || stored.fullName || '')
+    if (stored.phone) setPhone((prev) => prev || stored.phone || '')
+    if (stored.email) setEmail((prev) => prev || stored.email || '')
+    if (stored.linkedin) setLinkedin((prev) => prev || stored.linkedin || '')
+  }, [])
 
   useEffect(() => {
     if (!resume.trim()) return
@@ -100,6 +107,14 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
     setEmail((prev) => prev || extracted.email || '')
     setLinkedin((prev) => prev || extracted.linkedin || '')
   }, [resume])
+
+  useEffect(() => {
+    if (!canSaveContact.current) {
+      canSaveContact.current = true
+      return
+    }
+    saveContact({ fullName, phone, email, linkedin })
+  }, [fullName, phone, email, linkedin])
 
   const contact: SignOffContact = { fullName, phone, email, linkedin }
   const hasContent = letter.trim().length > 0
@@ -122,10 +137,9 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
 
   function requirePro(format: 'Word' | 'PDF') {
     setProHint(
-      `${format} is part of Pro Export ($4.99 one-time). Opening checkout for PDF and Word with your real sign-off…`,
+      `${format} is part of Pro Export ($4.99 one-time). Saving your draft and opening checkout…`,
     )
     openProCheckout()
-    window.setTimeout(() => setProHint(null), 5000)
   }
 
   function requireContactForExport(): boolean {
@@ -140,7 +154,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
   }
 
   function handleWordClick() {
-    if (!hasProAccess()) {
+    if (!hasProAccess) {
       requirePro('Word')
       return
     }
@@ -155,7 +169,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
   }
 
   function handlePdfClick() {
-    if (!hasProAccess()) {
+    if (!hasProAccess) {
       requirePro('PDF')
       return
     }
@@ -188,7 +202,9 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
           </div>
           {hasContent && (
             <p className="pl-6 text-[11px] text-muted-foreground">
-              Free: Copy · Pro Export ($4.99 one-time): PDF / Word
+              {hasProAccess
+                ? 'Pro Export unlocked on this browser · PDF and Word use your real sign-off'
+                : 'Free: Copy · Pro Export ($4.99 one-time): PDF / Word'}
             </p>
           )}
         </div>
@@ -213,14 +229,14 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             type="button"
             onClick={handleWordClick}
             disabled={!hasContent}
-            title="Pro Export ($4.99 one-time): Word"
+            title={hasProAccess ? 'Download Word' : 'Pro Export ($4.99 one-time): Word'}
             className={proButtonClass}
           >
-            <Lock className="size-3" aria-hidden="true" />
+            {hasProAccess ? null : <Lock className="size-3" aria-hidden="true" />}
             <Download className="size-3.5" aria-hidden="true" />
             Word
             <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              PRO
+              {hasProAccess ? 'READY' : 'PRO'}
             </span>
           </button>
 
@@ -228,14 +244,14 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             type="button"
             onClick={handlePdfClick}
             disabled={!hasContent}
-            title="Pro Export ($4.99 one-time): PDF"
+            title={hasProAccess ? 'Download PDF' : 'Pro Export ($4.99 one-time): PDF'}
             className={proButtonClass}
           >
-            <Lock className="size-3" aria-hidden="true" />
+            {hasProAccess ? null : <Lock className="size-3" aria-hidden="true" />}
             <Download className="size-3.5" aria-hidden="true" />
             PDF
             <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              PRO
+              {hasProAccess ? 'READY' : 'PRO'}
             </span>
           </button>
         </div>

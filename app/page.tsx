@@ -2,6 +2,7 @@ import { FileText, Gauge, ShieldCheck, Sparkles } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { Generator } from '@/components/generator'
+import { HomeFaq } from '@/components/home-faq'
 import { UpgradeButton } from '@/components/upgrade-button'
 
 const VALUES = [
@@ -96,6 +97,8 @@ export default function Page() {
         <section id="generator" className="mx-auto w-full max-w-6xl scroll-mt-24 px-5 py-10 sm:py-14">
           <Generator />
         </section>
+
+        <HomeFaq />
       </main>
 
       <SiteFooter tagline="Match the job. Write a cover letter that still sounds like you." />

@@ -1,9 +1,10 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, Briefcase, Check, Loader2, Sparkles, Target, User } from 'lucide-react'
 import { MatchError, MatchPanel } from '@/components/match-panel'
 import { ResultPanel } from '@/components/result-panel'
+import { loadDraft, saveDraft } from '@/lib/draft-storage'
 import { parseMatchResult, type JobMatchResult } from '@/lib/match-schema'
 
 const TONES = [
@@ -81,6 +82,38 @@ export function Generator() {
   const [matchError, setMatchError] = useState<string | null>(null)
   const resultRef = useRef<HTMLDivElement>(null)
   const matchRef = useRef<HTMLDivElement>(null)
+  const canSaveDraft = useRef(false)
+
+  useEffect(() => {
+    const draft = loadDraft()
+    if (draft) {
+      setResume(draft.resume)
+      setJob(draft.job)
+      if (TONES.some((item) => item.id === draft.tone)) {
+        setTone(draft.tone as ToneId)
+      }
+      setHighlight(draft.highlight)
+      setLetter(draft.letter)
+      setMatchResult(draft.matchResult)
+      setMatchSnapshot(draft.matchSnapshot)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!canSaveDraft.current) {
+      canSaveDraft.current = true
+      return
+    }
+    saveDraft({
+      resume,
+      job,
+      tone,
+      highlight,
+      letter,
+      matchResult,
+      matchSnapshot,
+    })
+  }, [resume, job, tone, highlight, letter, matchResult, matchSnapshot])
 
   const materialsReady =
     resume.trim().length >= MIN_CHARS && job.trim().length >= MIN_CHARS
@@ -200,7 +233,8 @@ export function Generator() {
           Step 1 · Paste your materials
         </p>
         <p className="text-[13px] text-muted-foreground">
-          Resume and job description stay on your device until you hit generate.
+          Resume and job description stay on this device. A local draft is kept so checkout does not
+          erase your letter.
         </p>
       </div>
 
