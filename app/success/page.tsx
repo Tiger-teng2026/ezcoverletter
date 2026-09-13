@@ -5,6 +5,7 @@ import { Check, Loader2 } from 'lucide-react'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { CONTACT_EMAIL } from '@/lib/constants'
+import { track } from '@/lib/ga'
 import { grantProAccess } from '@/lib/pro-access'
 
 type UnlockState = 'checking' | 'granted' | 'pending' | 'missing'
@@ -56,7 +57,23 @@ export default function SuccessPage() {
           return
         }
 
-        grantProAccess(payload.checkoutId || checkoutId)
+        const paidCheckoutId = payload.checkoutId || checkoutId
+        grantProAccess(paidCheckoutId)
+        const purchaseKey = `ezcl_ga_purchase_${paidCheckoutId || orderId || 'unknown'}`
+        let alreadyTracked = false
+        try {
+          alreadyTracked = window.sessionStorage.getItem(purchaseKey) === '1'
+          if (!alreadyTracked) window.sessionStorage.setItem(purchaseKey, '1')
+        } catch {
+          alreadyTracked = false
+        }
+        if (!alreadyTracked) {
+          track('purchase', {
+            transaction_id: paidCheckoutId || orderId,
+            value: 4.99,
+            currency: 'USD',
+          })
+        }
         setState('granted')
         setMessage('Pro Export is unlocked on this browser. PDF and Word are ready.')
       } catch {

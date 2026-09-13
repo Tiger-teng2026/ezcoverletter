@@ -5,6 +5,7 @@ import { AlertCircle, Briefcase, Check, Loader2, Sparkles, Target, User } from '
 import { MatchError, MatchPanel } from '@/components/match-panel'
 import { ResultPanel } from '@/components/result-panel'
 import { loadDraft, saveDraft } from '@/lib/draft-storage'
+import { track } from '@/lib/ga'
 import { parseMatchResult, type JobMatchResult } from '@/lib/match-schema'
 
 const TONES = [
@@ -83,6 +84,33 @@ export function Generator() {
   const resultRef = useRef<HTMLDivElement>(null)
   const matchRef = useRef<HTMLDivElement>(null)
   const canSaveDraft = useRef(false)
+  const startedApplication = useRef(false)
+  const resumeSubmitted = useRef(false)
+  const jobSubmitted = useRef(false)
+
+  function handleResumeChange(value: string) {
+    if (!startedApplication.current) {
+      startedApplication.current = true
+      track('start_application')
+    }
+    if (!resumeSubmitted.current && value.trim().length >= MIN_CHARS) {
+      resumeSubmitted.current = true
+      track('resume_submit')
+    }
+    setResume(value)
+  }
+
+  function handleJobChange(value: string) {
+    if (!startedApplication.current) {
+      startedApplication.current = true
+      track('start_application')
+    }
+    if (!jobSubmitted.current && value.trim().length >= MIN_CHARS) {
+      jobSubmitted.current = true
+      track('job_description_submit')
+    }
+    setJob(value)
+  }
 
   useEffect(() => {
     const draft = loadDraft()
@@ -169,6 +197,10 @@ export function Generator() {
           setLetter(acc)
         }
       }
+
+      if (acc.trim() && !acc.startsWith('[Generation ')) {
+        track('cover_letter_generate')
+      }
     } catch (err) {
       console.log('[v0] Generation error:', err)
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -216,6 +248,7 @@ export function Generator() {
 
       setMatchResult(result)
       setMatchSnapshot({ resume, job })
+      track('job_match_complete')
     } catch (err) {
       console.log('[v0] Match error:', err)
       setMatchResult(null)
@@ -245,7 +278,7 @@ export function Generator() {
           hint="Put your name on the first line, plus email, phone, and LinkedIn — we autofill Pro Export ($4.99 one-time) sign-off from these. Include hard metrics (%, $, days)."
           icon={<User className="size-3.5 text-primary" aria-hidden="true" />}
           value={resume}
-          onChange={setResume}
+          onChange={handleResumeChange}
           placeholder={
             'Jane Doe\nSenior Product Designer\njane.doe@email.com | +1 (415) 555-0188 | linkedin.com/in/jane-doe\n\nAcme Inc — Senior Product Designer (2021–2025)\n• Led checkout redesign that lifted conversion 18% and cut drop-off by 12 days in the funnel\n• Shipped a 120-component design system adopted by 40 engineers across 3 product squads\n• Ran 25+ discovery interviews and turned findings into a roadmap that grew activation 22%\n\nSkills: Figma, design systems, B2C SaaS, user research, HTML/CSS, A/B testing'
           }
@@ -256,7 +289,7 @@ export function Generator() {
           hint="Include the company name, a concrete product/initiative, and numbered requirements so the letter can open with a sharp, tailored hook."
           icon={<Briefcase className="size-3.5 text-accent" aria-hidden="true" />}
           value={job}
-          onChange={setJob}
+          onChange={handleJobChange}
           placeholder={
             'Product Designer, Growth — Northwind\nSan Francisco, CA (Hybrid)\n\nAbout the role:\nNorthwind is rebuilding onboarding around our new Activation Hub launch. You will own end-to-end design for signup, first-value, and retention experiments with PM and engineering.\n\nWhat you will do:\n• Lead UX for Activation Hub and related growth surfaces\n• Partner with PMs and engineers on rapid A/B tests\n• Strengthen our shared design system for growth use cases\n\nRequirements:\n• 5+ years product design, ideally B2C SaaS\n• Proven impact on conversion, activation, or retention metrics\n• Experience with design systems and cross-functional shipping'
           }

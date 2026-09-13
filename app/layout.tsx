@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { SITE_URL } from '@/lib/constants'
+import { GA_MEASUREMENT_ID } from '@/lib/ga'
 import './globals.css'
 
 const _geistSans = Geist({ subsets: ['latin'] })
@@ -67,6 +68,34 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="bg-background">
+      <head>
+        <script
+          async
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){window.dataLayer.push(arguments);}
+              window.gtag = gtag;
+              gtag('js', new Date());
+              var debug = false;
+              try {
+                var host = location.hostname;
+                debug = host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
+                  || /(?:^|[?&])ga_debug=1(?:&|$)/.test(location.search)
+                  || localStorage.getItem('ga_debug') === '1';
+              } catch (e) {}
+              if (debug) {
+                gtag('config', '${GA_MEASUREMENT_ID}', { debug_mode: true });
+              } else {
+                gtag('config', '${GA_MEASUREMENT_ID}');
+              }
+            `,
+          }}
+        />
+      </head>
       <body className="font-sans antialiased">
         {children}
         <Analytics />

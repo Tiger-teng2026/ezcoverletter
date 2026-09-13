@@ -6,6 +6,7 @@ import { extractContactFromResume } from '@/lib/contact-from-resume'
 import { toFrictionCopyText } from '@/lib/copy-letter'
 import { loadContact, saveContact } from '@/lib/draft-storage'
 import { downloadWordDocument, printLetterAsPdf } from '@/lib/export-letter'
+import { track } from '@/lib/ga'
 import { useProAccess } from '@/lib/pro-access'
 import type { SignOffContact } from '@/lib/sign-off'
 import { startProCheckout } from '@/lib/start-checkout'
@@ -128,6 +129,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(toFrictionCopyText(letter))
+      track('cover_letter_copy')
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
     } catch (err) {
@@ -154,6 +156,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
   }
 
   function handleWordClick() {
+    track('pro_export_click', { format: 'word' })
     if (!hasProAccess) {
       requirePro('Word')
       return
@@ -169,6 +172,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
   }
 
   function handlePdfClick() {
+    track('pro_export_click', { format: 'pdf' })
     if (!hasProAccess) {
       requirePro('PDF')
       return
