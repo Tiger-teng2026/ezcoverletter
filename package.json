@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --import ./tests/register-hooks.mjs --test tests/*.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
     "@vercel/analytics": "1.6.1",
     "ai": "^7.0.58",
     "class-variance-authority": "^0.7.1",

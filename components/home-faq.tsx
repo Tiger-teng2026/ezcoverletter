@@ -1,4 +1,5 @@
 import { CONTACT_EMAIL, SITE_URL } from '@/lib/constants'
+import { formatUsd, PLANS, PRO_EXPORT } from '@/lib/plans'
 
 const FAQS = [
   {
@@ -7,7 +8,7 @@ const FAQS = [
   },
   {
     q: 'Is EzCoverLetter free?',
-    a: 'Yes. Job Match Score, cover letter generation, and Copy are free. PDF and Word are Pro Export for $4.99 one-time — not a subscription.',
+    a: `The Free plan includes ${PLANS.free.monthlyCredits} AI credits each UTC month, with no card. Creator is ${formatUsd(PLANS.creator.monthlyPriceUsd)}/month for ${PLANS.creator.monthlyCredits} credits each billing period. Pro is ${formatUsd(PLANS.pro.monthlyPriceUsd)}/month for ${PLANS.pro.monthlyCredits} credits each billing period. Active Creator and Pro subscriptions include cover letter PDF and Word. ${PRO_EXPORT.name} is ${formatUsd(PRO_EXPORT.priceUsd)} one-time for one saved letter and remains available after a subscription ends.`,
   },
   {
     q: 'What is a Job Match Score?',
@@ -15,7 +16,7 @@ const FAQS = [
   },
   {
     q: 'Do you store my resume?',
-    a: `Resume and job text stay in your browser until you generate. We do not keep them on our servers for marketing or training. Questions: ${CONTACT_EMAIL}.`,
+    a: `Signed-out text is not stored. If you are signed in, the resume, job description, and result are saved to your account until you delete them. They are not written to server logs or used for training. Questions: ${CONTACT_EMAIL}.`,
   },
 ] as const
 

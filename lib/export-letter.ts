@@ -137,54 +137,8 @@ export function buildPrintDocumentHtml(letter: string, contact?: SignOffContact)
 }
 
 /**
- * Print a single-page PDF via a temporary iframe that contains ONLY the letter.
- * Avoids blank pages caused by printing the full app layout with visibility:hidden.
- */
-export function printLetterAsPdf(letter: string, contact?: SignOffContact) {
-  const html = buildPrintDocumentHtml(letter, contact)
-  const iframe = document.createElement('iframe')
-  iframe.setAttribute(
-    'style',
-    'position:fixed;left:0;top:0;width:0;height:0;border:0;opacity:0;pointer-events:none;',
-  )
-  iframe.setAttribute('aria-hidden', 'true')
-  document.body.appendChild(iframe)
-
-  const frameWindow = iframe.contentWindow
-  const frameDocument = iframe.contentDocument || frameWindow?.document
-  if (!frameWindow || !frameDocument) {
-    iframe.remove()
-    throw new Error('Unable to create print frame')
-  }
-
-  frameDocument.open()
-  frameDocument.write(html)
-  frameDocument.close()
-
-  const cleanup = () => {
-    iframe.remove()
-  }
-
-  const triggerPrint = () => {
-    try {
-      frameWindow.focus()
-      frameWindow.print()
-    } finally {
-      // Allow the print dialog to capture content before removing the frame.
-      window.setTimeout(cleanup, 1000)
-    }
-  }
-
-  // Ensure layout is ready inside the iframe before printing.
-  if (frameDocument.readyState === 'complete') {
-    window.setTimeout(triggerPrint, 50)
-  } else {
-    iframe.onload = () => window.setTimeout(triggerPrint, 50)
-  }
-}
-
-/**
  * International business letter Word (.doc via HTML) — Arial 11pt, 1.5 line-height, 1" margins.
+ * Paid downloads are assembled by the export route after the entitlement cookie is checked.
  */
 export function buildWordDocumentHtml(letter: string, contact?: SignOffContact): string {
   const body = buildLetterBodyHtml(letter, contact)
@@ -213,19 +167,4 @@ ${LETTER_DOCUMENT_STYLES}
 <main id="letter">${body}</main>
 </body>
 </html>`
-}
-
-export function downloadWordDocument(
-  letter: string,
-  filename = 'cover-letter.doc',
-  contact?: SignOffContact,
-) {
-  const html = buildWordDocumentHtml(letter, contact)
-  const blob = new Blob(['\ufeff', html], { type: 'application/msword' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
 }

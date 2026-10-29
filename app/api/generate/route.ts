@@ -4,6 +4,8 @@ import {
   type JobMatchResult,
 } from '@/lib/match-schema'
 import { withCanonicalSignOff } from '@/lib/sign-off'
+import { beginAiUsage } from '@/lib/billing/runtime'
+import { usageTextResponse } from '@/lib/ai-usage'
 
 export const maxDuration = 60
 
@@ -139,9 +141,18 @@ export async function POST(req: Request) {
     )
   }
 
+  const started = await beginAiUsage(req, 'cover-letter', {
+    tool: 'cover-letter',
+    title: job.slice(0, 80),
+    input: { resume, job, tone },
+  })
+  if (!started.ok) return usageTextResponse(started.error, started.status, started.cookies)
+  if (typeof started.replay === 'string') return usageTextResponse(started.replay, 200, started.cookies)
+
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let delivered = false
       try {
         const deepseekRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
@@ -174,6 +185,7 @@ export async function POST(req: Request) {
           } catch {
             // keep raw text
           }
+          await started.refund()
           controller.enqueue(
             encoder.encode(
               describeError(
@@ -186,6 +198,7 @@ export async function POST(req: Request) {
         }
 
         if (!deepseekRes.body) {
+          await started.refund()
           controller.enqueue(encoder.encode('[Generation failed] Empty response from DeepSeek.'))
           controller.close()
           return
@@ -218,6 +231,7 @@ export async function POST(req: Request) {
               }
 
               if (json.error?.message) {
+                await started.refund()
                 controller.enqueue(encoder.encode(describeError(new Error(json.error.message))))
                 controller.close()
                 return
@@ -233,12 +247,13 @@ export async function POST(req: Request) {
           }
         }
 
-        // Always strip AI sign-offs, then append exactly one canonical system footer.
         const cleanedText = withCanonicalSignOff(cleanPlaceholders(aiResponseText))
         if (!cleanedText) {
+          await started.refund()
           controller.enqueue(encoder.encode('[Generation failed] Empty response from DeepSeek.'))
         } else {
-          // Stream cleaned text in small chunks so the UI still updates progressively.
+          delivered = true
+          await started.commit(cleanedText)
           const chunkSize = 48
           for (let i = 0; i < cleanedText.length; i += chunkSize) {
             controller.enqueue(encoder.encode(cleanedText.slice(i, i + chunkSize)))
@@ -247,17 +262,20 @@ export async function POST(req: Request) {
 
         controller.close()
       } catch (error) {
+        if (!delivered) await started.refund()
         controller.enqueue(encoder.encode(describeError(error)))
         controller.close()
       }
     },
   })
 
-  return new Response(stream, {
+  const response = new Response(stream, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
     },
   })
+  for (const cookie of started.cookies) response.headers.append('Set-Cookie', cookie)
+  return response
 }

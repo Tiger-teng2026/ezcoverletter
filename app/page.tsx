@@ -1,27 +1,12 @@
-import { FileText, Gauge, ShieldCheck, Sparkles } from 'lucide-react'
-import { SiteHeader } from '@/components/site-header'
-import { SiteFooter } from '@/components/site-footer'
+import Link from 'next/link'
+import { ShieldCheck } from 'lucide-react'
 import { Generator } from '@/components/generator'
 import { HomeFaq } from '@/components/home-faq'
-import { UpgradeButton } from '@/components/upgrade-button'
-
-const VALUES = [
-  {
-    icon: Gauge,
-    title: 'Job Match Score',
-    body: 'See how well your resume fits a posting — matched skills, gaps, and what to fix before you apply.',
-  },
-  {
-    icon: FileText,
-    title: 'ATS-Friendly Cover Letter',
-    body: 'Generate a tailored cover letter from your resume and the job description, in a natural professional voice.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Application Optimization',
-    body: 'Use the match insights to tighten your application so it is clearer, more specific, and easier to screen.',
-  },
-] as const
+import { SaveNotice } from '@/components/save-notice'
+import { SiteFooter } from '@/components/site-footer'
+import { SiteHeader } from '@/components/site-header'
+import { formatUsd, PLANS, PRO_EXPORT } from '@/lib/plans'
+import { TOOLS } from '@/lib/toolkit'
 
 export default function Page() {
   return (
@@ -29,7 +14,6 @@ export default function Page() {
       <SiteHeader />
 
       <main>
-        {/* Hero */}
         <section className="relative overflow-hidden border-b border-border/60">
           <div
             aria-hidden="true"
@@ -38,70 +22,71 @@ export default function Page() {
           <div className="relative mx-auto flex w-full max-w-3xl flex-col items-center gap-5 px-5 py-16 text-center sm:py-24">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-medium tracking-wide text-muted-foreground">
               <ShieldCheck className="size-3 text-accent" aria-hidden="true" />
-              Job match + ATS-friendly cover letters
+              AI Job Search Toolkit
             </span>
 
             <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">
-              AI Job Application Assistant
-              <span className="mt-2 block text-[0.58em] font-medium leading-snug text-muted-foreground sm:mt-3">
-                for ATS-Friendly Cover Letters
+              EzCoverLetter
+              <span className="mt-2 block text-[0.42em] font-medium leading-snug text-muted-foreground sm:mt-3">
+                Everything You Need to Prepare, Apply, and Interview with Confidence.
               </span>
             </h1>
 
             <p className="max-w-xl text-pretty text-[15px] leading-relaxed text-muted-foreground sm:text-base">
-              See your Job Match Score, then generate a cover letter tailored to the posting. Free to
-              generate and copy. Pro Export is $4.99 one-time for PDF and Word.
+              Six tools for English-speaking job searches. Free includes {PLANS.free.monthlyCredits} AI credits each UTC
+              month. Creator is {formatUsd(PLANS.creator.monthlyPriceUsd)}/month for {PLANS.creator.monthlyCredits} credits
+              per billing period. Pro is {formatUsd(PLANS.pro.monthlyPriceUsd)}/month for {PLANS.pro.monthlyCredits} credits
+              per billing period. Active subscriptions include PDF and Word export. {PRO_EXPORT.name} is {formatUsd(PRO_EXPORT.priceUsd)} for one saved letter.
             </p>
 
             <div className="mt-1 flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
-              <UpgradeButton size="lg" />
               <a
-                href="#generator"
+                href="#tools"
+                className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground"
+              >
+                Browse the tools
+              </a>
+              <Link
+                href="/pricing"
                 className="text-[13px] font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
               >
-                Or start free below ↓
-              </a>
+                See pricing
+              </Link>
             </div>
           </div>
         </section>
 
-        {/* Value + flow */}
-        <section className="border-b border-border/60">
+        <section id="tools" className="scroll-mt-28 border-b border-border/60">
           <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:py-12">
             <p className="text-center text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-              How it helps
+              Six tools
             </p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              {VALUES.map((item) => (
-                <article
-                  key={item.title}
-                  className="rounded-2xl border border-border bg-card px-5 py-5"
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {TOOLS.map((tool) => (
+                <Link
+                  key={tool.href}
+                  href={tool.href}
+                  className="rounded-2xl border border-border bg-card px-5 py-5 transition-colors hover:border-primary/50"
                 >
-                  <item.icon className="size-4 text-primary" aria-hidden="true" />
-                  <h2 className="mt-3 text-[15px] font-semibold tracking-tight">{item.title}</h2>
-                  <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>
-                </article>
+                  <h2 className="text-[15px] font-semibold tracking-tight">{tool.title}</h2>
+                  <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{tool.summary}</p>
+                </Link>
               ))}
             </div>
-            <p className="mt-8 text-center text-[13px] leading-relaxed text-muted-foreground">
-              Paste resume + job description
-              <span className="mx-2 text-border">→</span>
-              Optional Job Match Score
-              <span className="mx-2 text-border">→</span>
-              ATS-friendly cover letter
-            </p>
           </div>
         </section>
 
-        {/* Generator */}
-        <section id="generator" className="mx-auto w-full max-w-6xl scroll-mt-24 px-5 py-10 sm:py-14">
-          <Generator />
+        <section id="generator" className="mx-auto w-full max-w-6xl scroll-mt-28 px-5 py-10 sm:py-14">
+          <SaveNotice />
+          <div className="mt-6">
+            <Generator />
+          </div>
         </section>
 
         <HomeFaq />
       </main>
 
-      <SiteFooter tagline="Match the job. Write a cover letter that still sounds like you." />
+      <SiteFooter tagline="Prepare, apply, and interview with a letter that still sounds like you." />
     </div>
   )
 }

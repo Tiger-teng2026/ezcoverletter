@@ -1,4 +1,5 @@
 import { extractJsonObject, parseMatchResult } from '@/lib/match-schema'
+import { runMeteredJson } from '@/lib/ai-usage'
 
 export const maxDuration = 60
 
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
     )
   }
 
+  return runMeteredJson(req, 'job-match', { tool: 'job-match', title: job.slice(0, 80), input: { resume, job } }, async () => {
   try {
     const deepseekRes = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -128,8 +130,9 @@ export async function POST(req: Request) {
       return jsonError('Could not read a valid job match score from the model response.', 502)
     }
 
-    return Response.json(result)
+    return result
   } catch (error) {
-    return jsonError(describeError(error), 500)
+    throw error
   }
+  })
 }

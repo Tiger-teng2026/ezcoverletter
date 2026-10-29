@@ -7,12 +7,22 @@ import { SiteHeader } from '@/components/site-header'
 import { CONTACT_EMAIL } from '@/lib/constants'
 import { track } from '@/lib/ga'
 import { grantProAccess } from '@/lib/pro-access'
+import { rememberPaidExportDocument } from '@/lib/export-document-session'
+import { interpretUnlockResponse, type UnlockUiState } from '@/lib/unlock-result'
 
-type UnlockState = 'checking' | 'granted' | 'pending' | 'missing'
+type SuccessPayload = {
+  granted?: boolean
+  verified?: boolean
+  checkoutId?: string
+  documentId?: string
+  scope?: string
+  paymentStatus?: string
+  error?: string
+}
 
 export default function SuccessPage() {
-  const [state, setState] = useState<UnlockState>('checking')
-  const [message, setMessage] = useState('Confirming your Pro Export purchase…')
+  const [state, setState] = useState<UnlockUiState | 'checking'>('checking')
+  const [message, setMessage] = useState('Confirming your payment with Creem…')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -21,8 +31,8 @@ export default function SuccessPage() {
     const productId = params.get('product_id') || ''
 
     if (!checkoutId && !orderId) {
-      setState('missing')
-      setMessage('No payment confirmation was attached to this page.')
+      setState('failed')
+      setMessage('No payment confirmation was attached to this page. Pro Export was not unlocked.')
       return
     }
 
@@ -37,49 +47,68 @@ export default function SuccessPage() {
             checkout_id: checkoutId,
             order_id: orderId,
             product_id: productId,
+            request_id: params.get('request_id') || '',
           }),
         })
-        const payload = (await res.json().catch(() => null)) as
-          | { granted?: boolean; error?: string; checkoutId?: string }
-          | null
+        const payload = (await res.json().catch(() => null)) as SuccessPayload | null
 
         if (cancelled) return
 
-        if (res.status === 402) {
-          setState('pending')
-          setMessage(payload?.error || 'Payment is still processing.')
-          return
+        const verified = payload?.verified === true
+        const granted = payload?.granted === true
+        const documentScoped = payload?.scope === 'document'
+        if (documentScoped && payload?.documentId) rememberPaidExportDocument(payload.documentId)
+        const browserStateSaved = verified && granted && !documentScoped ? grantProAccess(payload?.checkoutId || checkoutId) : false
+        const view = interpretUnlockResponse({
+          status: res.status,
+          verified,
+          granted,
+          paymentStatus: typeof payload?.paymentStatus === 'string' ? payload.paymentStatus : undefined,
+          browserStateSaved,
+          documentScoped,
+        })
+
+        if (view.trackPurchase && payload?.checkoutId) {
+          const purchaseKey = `ezcl_ga_purchase_${payload.checkoutId}`
+          let alreadyTracked = false
+          try {
+            alreadyTracked = window.sessionStorage.getItem(purchaseKey) === '1'
+            if (!alreadyTracked) window.sessionStorage.setItem(purchaseKey, '1')
+          } catch {
+            alreadyTracked = false
+          }
+          if (!alreadyTracked) {
+            track('purchase', {
+              transaction_id: payload.checkoutId,
+              value: 4.99,
+              currency: 'USD',
+            })
+          }
         }
 
-        if (!res.ok || !payload?.granted) {
-          setState('missing')
-          setMessage(payload?.error || 'Could not confirm this payment.')
-          return
+        if (view.state === 'granted') {
+          setMessage(
+            documentScoped
+              ? 'This cover letter is unlocked. PDF and Word stay available for this letter.'
+              : 'Pro Export is unlocked on this browser. PDF and Word are ready.',
+          )
+        } else if (view.state === 'pending') {
+          setMessage(payload?.error || 'Payment is still processing. Pro Export stays locked until it completes.')
+        } else if (view.state === 'entitlement_pending') {
+          setMessage(
+            browserStateSaved
+              ? payload?.error ||
+                  'Your payment was confirmed, but Pro Export is not active on this browser yet. Refresh this page. You do not need to pay again.'
+              : 'Your payment was verified, but this browser could not save Pro status. Allow site data for this site, then refresh this page. You do not need to pay again.',
+          )
+        } else {
+          setMessage(payload?.error || 'Could not confirm this payment. Pro Export was not unlocked.')
         }
-
-        const paidCheckoutId = payload.checkoutId || checkoutId
-        grantProAccess(paidCheckoutId)
-        const purchaseKey = `ezcl_ga_purchase_${paidCheckoutId || orderId || 'unknown'}`
-        let alreadyTracked = false
-        try {
-          alreadyTracked = window.sessionStorage.getItem(purchaseKey) === '1'
-          if (!alreadyTracked) window.sessionStorage.setItem(purchaseKey, '1')
-        } catch {
-          alreadyTracked = false
-        }
-        if (!alreadyTracked) {
-          track('purchase', {
-            transaction_id: paidCheckoutId || orderId,
-            value: 4.99,
-            currency: 'USD',
-          })
-        }
-        setState('granted')
-        setMessage('Pro Export is unlocked on this browser. PDF and Word are ready.')
+        setState(view.state)
       } catch {
         if (cancelled) return
-        setState('missing')
-        setMessage('Could not confirm this payment. Check your connection and try again.')
+        setState('failed')
+        setMessage('Could not confirm this payment. Check your connection and try again. Pro Export was not unlocked.')
       }
     }
 
@@ -108,14 +137,16 @@ export default function SuccessPage() {
               ? 'Payment still processing'
               : state === 'checking'
                 ? 'Confirming payment'
-                : 'Payment not confirmed'}
+                : state === 'entitlement_pending'
+                  ? 'Pro Export not active yet'
+                  : 'Payment not confirmed'}
         </h1>
         <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">{message}</p>
 
         {state === 'granted' ? (
           <p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">
-            Your draft stays on this device. Open the generator and export PDF or Word with your real
-            sign-off.
+            Your draft stays in this tab. PDF and Word for a purchased letter use that saved letter. You can
+            also download it from your account.
           </p>
         ) : null}
 

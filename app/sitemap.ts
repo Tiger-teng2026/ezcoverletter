@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { getAllPosts } from '@/lib/blog'
 import { SITE_URL } from '@/lib/constants'
+import { TOOLS } from '@/lib/toolkit'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getAllPosts()
@@ -18,6 +19,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1,
+    },
+    ...TOOLS.map((tool) => ({
+      url: `${SITE_URL}${tool.href}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.9,
+    })),
+    {
+      url: `${SITE_URL}/pricing`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    },
+    {
+      url: `${SITE_URL}/login`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.4,
     },
     {
       url: `${SITE_URL}/blog`,

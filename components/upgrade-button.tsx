@@ -1,9 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { useProAccess } from '@/lib/pro-access'
-import { startProCheckout } from '@/lib/start-checkout'
 
 type Props = {
   size?: 'sm' | 'lg'
@@ -12,7 +9,6 @@ type Props = {
 
 export function UpgradeButton({ size = 'sm', className = '' }: Props) {
   const unlocked = useProAccess()
-  const [busy, setBusy] = useState(false)
 
   const sizeClasses =
     size === 'lg'
@@ -39,26 +35,9 @@ export function UpgradeButton({ size = 'sm', className = '' }: Props) {
     )
   }
 
-  async function handleClick() {
-    if (busy) return
-    setBusy(true)
-    try {
-      await startProCheckout()
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
-    <button type="button" onClick={() => void handleClick()} disabled={busy} className={classNameFull}>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-      />
-      <span className="relative inline-flex items-center gap-1.5">
-        {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
-        {busy ? 'Opening checkout…' : 'Pro Export — $4.99 one-time'}
-      </span>
-    </button>
+    <a href={size === 'lg' ? '/cover-letter#generator' : '/pricing'} className={classNameFull}>
+      <span className="relative">{size === 'lg' ? 'Choose a letter to export' : 'Plans'}</span>
+    </a>
   )
 }

@@ -5,12 +5,11 @@ import { Check, Copy, Download, FileText, Loader2, Lock } from 'lucide-react'
 import { extractContactFromResume } from '@/lib/contact-from-resume'
 import { toFrictionCopyText } from '@/lib/copy-letter'
 import { loadContact, saveContact } from '@/lib/draft-storage'
-import { downloadWordDocument, printLetterAsPdf } from '@/lib/export-letter'
+import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
+import { exportDocumentForLetter, exportFailureAction, rememberExportDocument } from '@/lib/export-document-session'
 import { track } from '@/lib/ga'
-import { useProAccess } from '@/lib/pro-access'
+import { clearProDisplay, useProAccess } from '@/lib/pro-access'
 import type { SignOffContact } from '@/lib/sign-off'
-import { startProCheckout } from '@/lib/start-checkout'
-
 type Props = {
   letter: string
   isLoading: boolean
@@ -35,9 +34,6 @@ function renderLetter(letter: string) {
   })
 }
 
-function openProCheckout() {
-  void startProCheckout()
-}
 
 function ContactInput({
   id,
@@ -86,6 +82,8 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
   const hasProAccess = useProAccess()
   const [copied, setCopied] = useState(false)
   const [proHint, setProHint] = useState<string | null>(null)
+  const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null)
+  const exportLock = useRef(false)
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -137,11 +135,41 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
     }
   }
 
-  function requirePro(format: 'Word' | 'PDF') {
-    setProHint(
-      `${format} is part of Pro Export ($4.99 one-time). Saving your draft and opening checkout…`,
-    )
-    openProCheckout()
+  async function createExportDocument() {
+    const saved = await fetch('/api/billing/export-document', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ letter, title: 'Cover letter', contact }),
+    })
+    const savedPayload = (await saved.json().catch(() => null)) as { documentId?: string; error?: string } | null
+    if (saved.status === 401) {
+      window.location.href = '/login'
+      return null
+    }
+    if (!saved.ok || !savedPayload?.documentId) {
+      setProHint(savedPayload?.error || 'This letter could not be saved for export.')
+      return null
+    }
+    rememberExportDocument(letter, savedPayload.documentId)
+    return savedPayload.documentId
+  }
+
+  async function finishExportResponse(res: Response, format: 'pdf' | 'word') {
+    if (format === 'pdf') {
+      const html = await res.text()
+      if (!html.includes('id="letter"')) {
+        setProHint('Export failed.')
+        return
+      }
+      printHtmlDocument(html)
+      return
+    }
+    const blob = await res.blob()
+    if (blob.size === 0) {
+      setProHint('Word export failed.')
+      return
+    }
+    downloadBlob(blob, 'cover-letter.doc')
   }
 
   function requireContactForExport(): boolean {
@@ -155,36 +183,72 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
     return true
   }
 
-  function handleWordClick() {
-    track('pro_export_click', { format: 'word' })
-    if (!hasProAccess) {
-      requirePro('Word')
-      return
-    }
-    if (!requireContactForExport()) return
+  async function deliverExport(format: 'pdf' | 'word') {
+    if (exportLock.current) return
+    exportLock.current = true
+    setExporting(format)
+    setProHint(null)
     try {
-      downloadWordDocument(letter, 'cover-letter.doc', contact)
+      const known = exportDocumentForLetter(letter)
+      const res = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format, letter, contact, documentId: known || undefined }),
+      })
+
+      if (res.ok) {
+        await finishExportResponse(res, format)
+        return
+      }
+
+      const action = exportFailureAction(res.status, known)
+      if (action === 'stop') {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null
+        setProHint(payload?.error || 'Export failed.')
+        return
+      }
+
+      clearProDisplay()
+      const documentId = action === 'resume' ? known : await createExportDocument()
+      if (!documentId) return
+      const { startDocumentCheckout } = await import('@/lib/start-checkout')
+      const result = await startDocumentCheckout(documentId)
+      if (!result.ok) {
+        setProHint(result.error)
+        return
+      }
+      if (result.alreadyOwned) {
+        const paid = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ format, documentId, contact }),
+        })
+        if (!paid.ok) {
+          const payload = (await paid.json().catch(() => null)) as { error?: string } | null
+          setProHint(payload?.error || 'This letter is paid, but the file could not be created.')
+          return
+        }
+        await finishExportResponse(paid, format)
+      }
     } catch (err) {
-      console.log('[v0] Word export failed:', err)
-      setProHint(err instanceof Error ? err.message : 'Word export failed.')
-      window.setTimeout(() => setProHint(null), 5000)
+      console.log('[v0] Export failed:', err)
+      setProHint(err instanceof Error ? err.message : 'Export failed.')
+    } finally {
+      exportLock.current = false
+      setExporting(null)
     }
   }
 
-  function handlePdfClick() {
-    track('pro_export_click', { format: 'pdf' })
-    if (!hasProAccess) {
-      requirePro('PDF')
-      return
-    }
+  async function handleWordClick() {
+    track('pro_export_click', { format: 'word' })
     if (!requireContactForExport()) return
-    try {
-      printLetterAsPdf(letter, contact)
-    } catch (err) {
-      console.log('[v0] PDF print failed:', err)
-      setProHint(err instanceof Error ? err.message : 'Unable to open the PDF print dialog.')
-      window.setTimeout(() => setProHint(null), 5000)
-    }
+    await deliverExport('word')
+  }
+
+  async function handlePdfClick() {
+    track('pro_export_click', { format: 'pdf' })
+    if (!requireContactForExport()) return
+    await deliverExport('pdf')
   }
 
   return (
@@ -208,7 +272,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             <p className="pl-6 text-[11px] text-muted-foreground">
               {hasProAccess
                 ? 'Pro Export unlocked on this browser · PDF and Word use your real sign-off'
-                : 'Free: Copy · Pro Export ($4.99 one-time): PDF / Word'}
+                : 'Copy is included. PDF and Word need a subscription or a purchase of this letter.'}
             </p>
           )}
         </div>
@@ -231,9 +295,9 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
 
           <button
             type="button"
-            onClick={handleWordClick}
-            disabled={!hasContent}
-            title={hasProAccess ? 'Download Word' : 'Pro Export ($4.99 one-time): Word'}
+            onClick={() => void handleWordClick()}
+            disabled={!hasContent || exporting !== null}
+            title={hasProAccess ? 'Download Word' : 'Export this letter: Word'}
             className={proButtonClass}
           >
             {hasProAccess ? null : <Lock className="size-3" aria-hidden="true" />}
@@ -246,9 +310,9 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
 
           <button
             type="button"
-            onClick={handlePdfClick}
-            disabled={!hasContent}
-            title={hasProAccess ? 'Download PDF' : 'Pro Export ($4.99 one-time): PDF'}
+            onClick={() => void handlePdfClick()}
+            disabled={!hasContent || exporting !== null}
+            title={hasProAccess ? 'Download PDF' : 'Export this letter: PDF'}
             className={proButtonClass}
           >
             {hasProAccess ? null : <Lock className="size-3" aria-hidden="true" />}
@@ -277,7 +341,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             <div className="flex flex-col gap-0.5">
               <p className="text-[13px] font-semibold">Sign-off details for PDF / Word</p>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Autofilled from your resume when possible. Required for Pro Export ($4.99 one-time) —
+                Autofilled from your resume when possible. Required before PDF or Word export —
                 Free Copy never uses these fields.
               </p>
             </div>
@@ -342,7 +406,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             <p className="text-sm font-medium">Nothing here yet</p>
             <p className="text-[13px] leading-relaxed text-muted-foreground">
               Paste your resume and job description, then generate. Your letter appears here — with
-              free Copy. PDF and Word are Pro Export ($4.99 one-time).
+              Copy is included. PDF and Word require a verified subscription or a purchase of this letter.
             </p>
           </div>
         )}

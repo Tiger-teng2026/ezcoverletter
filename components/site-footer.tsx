@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { CONTACT_EMAIL } from '@/lib/constants'
+import { TOOLS } from '@/lib/toolkit'
 
 type Props = {
   /** Optional tagline shown on the homepage footer. */
@@ -10,6 +11,17 @@ export function SiteFooter({ tagline }: Props) {
   return (
     <footer className="border-t border-border/60">
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-5 px-5 py-8 text-[11px] text-muted-foreground">
+        <nav aria-label="Tools" className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          {TOOLS.map((tool) => (
+            <Link key={tool.href} href={tool.href} className="transition-colors hover:text-foreground">
+              {tool.title}
+            </Link>
+          ))}
+          <Link href="/pricing" className="transition-colors hover:text-foreground">
+            Pricing
+          </Link>
+        </nav>
+
         <div className="flex w-full flex-col items-center justify-between gap-3 sm:flex-row sm:gap-4">
           <p>© {new Date().getFullYear()} EzCoverLetter</p>
 

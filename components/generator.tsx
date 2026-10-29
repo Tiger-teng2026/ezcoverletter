@@ -266,8 +266,7 @@ export function Generator() {
           Step 1 · Paste your materials
         </p>
         <p className="text-[13px] text-muted-foreground">
-          Resume and job description stay on this device. A local draft is kept so checkout does not
-          erase your letter.
+          A local draft stays in this browser so checkout does not erase your letter. If you are signed in, the resume, job description, and result are also saved to your account.
         </p>
       </div>
 
@@ -275,7 +274,7 @@ export function Generator() {
         <Field
           id="resume"
           label="Paste Resume / CV"
-          hint="Put your name on the first line, plus email, phone, and LinkedIn — we autofill Pro Export ($4.99 one-time) sign-off from these. Include hard metrics (%, $, days)."
+          hint="Put your name on the first line, plus email, phone, and LinkedIn — we autofill the export sign-off from these. Include hard metrics (%, $, days)."
           icon={<User className="size-3.5 text-primary" aria-hidden="true" />}
           value={resume}
           onChange={handleResumeChange}
@@ -444,7 +443,7 @@ export function Generator() {
           <p className="text-center text-[11px] text-muted-foreground">
             {matchForGenerate
               ? 'Using your Job Match Score to tailor this letter · Skip match anytime'
-              : 'Free to generate and copy · PDF & Word are Pro Export ($4.99 one-time)'}
+              : 'Copy is included. PDF and Word need an active subscription or a $4.99 purchase of this letter.'}
           </p>
         )}
       </div>
@@ -455,7 +454,7 @@ export function Generator() {
             Step 5 · Review & export
           </p>
           <p className="text-[13px] text-muted-foreground">
-            Copy is free. PDF and Word are Pro Export ($4.99 one-time) — with your real sign-off
+            Copy is included. PDF and Word use your real sign-off after export is verified.
             details filled in.
           </p>
         </div>

@@ -10,27 +10,27 @@ const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'EzCoverLetter — AI Job Application Assistant for ATS-Friendly Cover Letters',
+  title: 'EzCoverLetter — AI Job Search Toolkit',
   description:
-    'EzCoverLetter is an AI job application assistant. Free Job Match Score, cover letter generation, and Copy. Pro Export is $4.99 one-time for PDF and Word.',
+    'Everything you need to prepare, apply, and interview with confidence. Cover letters, resume rewrites, ATS reviews, interview practice, LinkedIn drafts, and career emails.',
   generator: 'v0.app',
   robots: {
     index: true,
     follow: true,
   },
   openGraph: {
-    title: 'EzCoverLetter — AI Job Application Assistant for ATS-Friendly Cover Letters',
+    title: 'EzCoverLetter — AI Job Search Toolkit',
     description:
-      'Free Job Match Score, cover letter generation, and Copy. Pro Export is $4.99 one-time for PDF and Word.',
+      'Everything you need to prepare, apply, and interview with confidence. Free, Creator, and Pro plans include monthly AI credits. PDF and Word export is included while a subscription is active, or $4.99 for one saved letter.',
     type: 'website',
     url: SITE_URL,
     siteName: 'EzCoverLetter',
   },
   twitter: {
     card: 'summary',
-    title: 'EzCoverLetter — AI Job Application Assistant for ATS-Friendly Cover Letters',
+    title: 'EzCoverLetter — AI Job Search Toolkit',
     description:
-      'Free Job Match Score, cover letter generation, and Copy. Pro Export is $4.99 one-time for PDF and Word.',
+      'Everything you need to prepare, apply, and interview with confidence. Free, Creator, and Pro plans include monthly AI credits. PDF and Word export is included while a subscription is active, or $4.99 for one saved letter.',
   },
   // Google Search Console HTML tag verification
   // Replace the content string in Search Console if you regenerate the meta tag.

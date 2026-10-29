@@ -13,6 +13,9 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 node_modules
 .next/
+tsconfig.tsbuildinfo
+auth-review.txt
+auth-review-next.txt
 .DS_Store
 .vercel
 cover-letter-ai.zip
