@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
+import { savedResultTitle } from '@/lib/history-display'
 import { formatUsd, PLANS, PRO_EXPORT } from '@/lib/plans'
 
 type Account = {
@@ -157,20 +158,23 @@ export function AccountPanel({ billingReturn, welcome }: { billingReturn: boolea
         <h2 className="text-[15px] font-semibold">Saved results</h2>
         {account.history.length === 0 ? <p className="mt-2 text-[13px] text-muted-foreground">No saved results yet.</p> : (
           <ul className="mt-3 space-y-2">
-            {account.history.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-3 text-[13px]">
-                <Link href={`/account/history/${item.id}`} className="underline-offset-4 hover:underline">{item.title || item.tool}</Link>
-                <button
-                  type="button"
-                  className="text-muted-foreground"
-                  onClick={() => {
-                    void fetch(`/api/history/${item.id}`, { method: 'DELETE' }).then(() => load())
-                  }}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
+            {account.history.map((item) => {
+              const label = savedResultTitle(item)
+              return (
+                <li key={item.id} className="flex items-start justify-between gap-3 text-[13px]">
+                  <Link href={`/account/history/${item.id}`} className="min-w-0 line-clamp-2 break-words underline-offset-4 hover:underline" title={label}>{label}</Link>
+                  <button
+                    type="button"
+                    className="shrink-0 text-muted-foreground"
+                    onClick={() => {
+                      void fetch(`/api/history/${item.id}`, { method: 'DELETE' }).then(() => load())
+                    }}
+                  >
+                    Delete
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
