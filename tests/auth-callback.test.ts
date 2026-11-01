@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { GET as callbackGet } from '../app/auth/callback/route.ts'
+import { POST as magicPost } from '../app/api/auth/magic-link/route.ts'
 import { POST as sessionPost } from '../app/api/auth/session/route.ts'
 import { GET as historyGet } from '../app/api/history/route.ts'
 import { allowlistedOriginFromRequest } from '../lib/creem.ts'
@@ -11,7 +12,8 @@ const originalAnon = process.env.SUPABASE_ANON_KEY
 const originalVercelEnv = process.env.VERCEL_ENV
 const originalVercelUrl = process.env.VERCEL_URL
 const originalVercelBranchUrl = process.env.VERCEL_BRANCH_URL
-const PREVIEW_HOST = 'ezcoverletter-git-billing-team.vercel.app'
+const PREVIEW_HOST = 'my-ceyhwycc0-tiger-teng2026s-projects.vercel.app'
+const BRANCH_HOST = 'my-app-git-billing-test-tiger-teng2026s-projects.vercel.app'
 
 afterEach(() => {
   globalThis.fetch = originalFetch
@@ -97,32 +99,37 @@ test('production domains and localhost stay allowlisted', () => {
   assert.equal(originFor('127.0.0.1:3000', 'http'), 'http://127.0.0.1:3000')
 })
 
-test('the current preview deployment origin is allowlisted', () => {
+function usePreview(branch = BRANCH_HOST) {
   process.env.VERCEL_ENV = 'preview'
   process.env.VERCEL_URL = PREVIEW_HOST
-  assert.equal(originFor(PREVIEW_HOST, 'https'), `https://${PREVIEW_HOST}`)
-  assert.equal(originFor('www.ezcoverletter.xyz', 'https'), 'https://www.ezcoverletter.xyz')
-  assert.equal(originFor('localhost:3000', 'http'), 'http://localhost:3000')
+  if (branch) process.env.VERCEL_BRANCH_URL = branch
+  else delete process.env.VERCEL_BRANCH_URL
+}
+
+test('a unique preview host uses the stable branch callback', () => {
+  usePreview()
+  assert.equal(originFor(PREVIEW_HOST, 'https'), `https://${BRANCH_HOST}`)
+  assert.equal(originFor('localhost:3000', 'http'), `https://${BRANCH_HOST}`)
 })
 
+test('the stable preview branch keeps its own callback', () => {
+  usePreview()
+  assert.equal(originFor(BRANCH_HOST, 'https'), `https://${BRANCH_HOST}`)
+})
 
-test('the stable Vercel Preview branch alias is allowlisted for login callbacks', () => {
-  process.env.VERCEL_ENV = 'preview'
-  process.env.VERCEL_URL = PREVIEW_HOST
-  process.env.VERCEL_BRANCH_URL = 'my-app-git-billing-test-tiger-teng2026s-projects.vercel.app'
-  assert.equal(
-    originFor('my-app-git-billing-test-tiger-teng2026s-projects.vercel.app', 'https'),
-    'https://my-app-git-billing-test-tiger-teng2026s-projects.vercel.app',
-  )
+test('a preview without a branch alias uses only the exact deployment host', () => {
+  usePreview('')
+  assert.equal(originFor(PREVIEW_HOST, 'https'), `https://${PREVIEW_HOST}`)
+  assert.equal(originFor('other-project.vercel.app', 'https'), 'https://www.ezcoverletter.xyz')
 })
 
 test('other preview and external hosts are rejected', () => {
-  process.env.VERCEL_ENV = 'preview'
-  process.env.VERCEL_URL = PREVIEW_HOST
-  assert.equal(originFor('other-project.vercel.app', 'https'), 'https://www.ezcoverletter.xyz')
-  assert.equal(originFor('evil.example', 'https'), 'https://www.ezcoverletter.xyz')
-  assert.equal(originFor(PREVIEW_HOST, 'http'), 'https://www.ezcoverletter.xyz')
+  usePreview()
+  assert.equal(originFor('other-project.vercel.app', 'https'), `https://${BRANCH_HOST}`)
+  assert.equal(originFor('evil.example', 'https'), `https://${BRANCH_HOST}`)
+  assert.equal(originFor(PREVIEW_HOST, 'http'), `https://${BRANCH_HOST}`)
   process.env.VERCEL_URL = 'https://evil.example'
+  process.env.VERCEL_BRANCH_URL = '*.vercel.app'
   assert.equal(originFor('evil.example', 'https'), 'https://www.ezcoverletter.xyz')
   process.env.VERCEL_URL = '*.vercel.app'
   assert.equal(originFor('anything.vercel.app', 'https'), 'https://www.ezcoverletter.xyz')
@@ -131,35 +138,77 @@ test('other preview and external hosts are rejected', () => {
 test('production does not accept a preview origin', () => {
   process.env.VERCEL_ENV = 'production'
   process.env.VERCEL_URL = PREVIEW_HOST
+  process.env.VERCEL_BRANCH_URL = BRANCH_HOST
   assert.equal(originFor(PREVIEW_HOST, 'https'), 'https://www.ezcoverletter.xyz')
+  assert.equal(originFor(BRANCH_HOST, 'https'), 'https://www.ezcoverletter.xyz')
+  assert.equal(originFor('localhost:3000', 'http'), 'https://www.ezcoverletter.xyz')
   assert.equal(originFor('www.ezcoverletter.xyz', 'https'), 'https://www.ezcoverletter.xyz')
 })
 
-test('preview login callback stays on that exact deployment', async () => {
+test('magic link redirect_to uses the stable preview branch', async () => {
   process.env.SUPABASE_URL = 'https://example.supabase.co'
   process.env.SUPABASE_ANON_KEY = 'test-anon-key'
-  process.env.VERCEL_ENV = 'preview'
-  process.env.VERCEL_URL = PREVIEW_HOST
-  const response = await callbackGet(
-    new Request(`https://${PREVIEW_HOST}/auth/callback?error=access_denied&next=https://evil.example`, {
-      headers: { host: PREVIEW_HOST, 'x-forwarded-proto': 'https' },
-    }),
-  )
-  assert.equal(response.status, 307)
-  assert.equal(response.headers.get('location'), `https://${PREVIEW_HOST}/login?error=link`)
+  usePreview()
+  let requested = ''
+  globalThis.fetch = async (input) => {
+    requested = String(input)
+    return Response.json({})
+  }
+  const response = await magicPost(new Request(`https://${PREVIEW_HOST}/api/auth/magic-link`, {
+    method: 'POST',
+    headers: {
+      host: PREVIEW_HOST,
+      'x-forwarded-proto': 'https',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ email: 'person@example.com' }),
+  }))
+  assert.equal(response.status, 200)
+  const redirect = decodeURIComponent(requested)
+  assert.match(redirect, new RegExp(`https://${BRANCH_HOST}/auth/callback`))
+  assert.equal(redirect.includes(PREVIEW_HOST), false)
+  assert.equal(redirect.includes('www.ezcoverletter.xyz'), false)
 })
 
-test('preview login callback rejects a different vercel.app host', async () => {
+test('a verified preview login lands on that preview account', async () => {
   process.env.SUPABASE_URL = 'https://example.supabase.co'
   process.env.SUPABASE_ANON_KEY = 'test-anon-key'
-  process.env.VERCEL_ENV = 'preview'
-  process.env.VERCEL_URL = PREVIEW_HOST
-  const response = await callbackGet(
-    new Request('https://other-project.vercel.app/auth/callback?error=access_denied', {
-      headers: { host: 'other-project.vercel.app', 'x-forwarded-proto': 'https' },
-    }),
-  )
-  assert.equal(response.headers.get('location'), 'https://www.ezcoverletter.xyz/login?error=link')
+  usePreview()
+  globalThis.fetch = async () => Response.json({
+    access_token: 'session-access-token',
+    refresh_token: 'session-refresh-token',
+    token_type: 'bearer',
+    expires_in: 3600,
+    expires_at: 1_900_000_000,
+    user: {
+      id: '11111111-1111-4111-8111-111111111111',
+      aud: 'authenticated',
+      role: 'authenticated',
+      email: 'person@example.com',
+      app_metadata: {},
+      user_metadata: {},
+    },
+  })
+  const response = await callbackGet(new Request(`https://${PREVIEW_HOST}/auth/callback?token_hash=valid-token&type=email`, {
+    headers: { host: PREVIEW_HOST, 'x-forwarded-proto': 'https' },
+  }))
+  assert.equal(response.status, 307)
+  assert.equal(response.headers.get('location'), `https://${BRANCH_HOST}/account?welcome=1`)
+  assert.match(response.headers.get('set-cookie') || '', /sb-/)
+  assert.equal((response.headers.get('location') || '').includes('www.ezcoverletter.xyz'), false)
+})
+
+test('a rejected preview login does not create a session', async () => {
+  process.env.SUPABASE_URL = 'https://example.supabase.co'
+  process.env.SUPABASE_ANON_KEY = 'test-anon-key'
+  usePreview()
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: 'invalid', error_code: 'otp_expired' }), { status: 403 })
+  const response = await callbackGet(new Request(`https://${PREVIEW_HOST}/auth/callback?code=not-a-session`, {
+    headers: { host: PREVIEW_HOST, 'x-forwarded-proto': 'https' },
+  }))
+  assert.equal(response.status, 307)
+  assert.equal(response.headers.get('location'), `https://${BRANCH_HOST}/login?error=link`)
+  assert.equal(response.headers.get('set-cookie'), null)
 })
 
 test('production login callback ignores a preview hostname', async () => {
@@ -167,6 +216,7 @@ test('production login callback ignores a preview hostname', async () => {
   process.env.SUPABASE_ANON_KEY = 'test-anon-key'
   process.env.VERCEL_ENV = 'production'
   process.env.VERCEL_URL = PREVIEW_HOST
+  process.env.VERCEL_BRANCH_URL = BRANCH_HOST
   const response = await callbackGet(
     new Request(`https://${PREVIEW_HOST}/auth/callback?error=access_denied`, {
       headers: { host: PREVIEW_HOST, 'x-forwarded-proto': 'https' },

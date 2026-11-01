@@ -100,17 +100,25 @@ function isVercelDeploymentHost(host: string) {
   return labels.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
 }
 
+/** Exact *.vercel.app hostname only. A scheme, wildcard, or other host is rejected. */
+function vercelDeploymentOrigin(value: string | undefined) {
+  const host = value?.trim().toLowerCase() || ''
+  if (!isVercelDeploymentHost(host)) return ''
+  return `https://${host}`
+}
+
 /**
- * Vercel exposes both the unique deployment hostname (VERCEL_URL) and the
- * stable branch alias (VERCEL_BRANCH_URL). Accept only those exact HTTPS hosts,
- * and only in Preview; never widen this to arbitrary *.vercel.app hosts.
+ * Preview login and checkout return the stable branch alias whenever it is valid.
+ * The per-deployment VERCEL_URL is used only when that alias is missing.
+ * The request host must be one of those two exact hosts; other vercel.app names are not accepted.
  */
-function currentPreviewOrigins() {
-  if (process.env.VERCEL_ENV !== 'preview') return []
-  return [...new Set([process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]
-    .map((value) => value?.trim().toLowerCase() || '')
-    .filter(isVercelDeploymentHost)
-    .map((host) => `https://${host}`))]
+function previewCallbackOrigin(requestOrigin: string) {
+  if (process.env.VERCEL_ENV !== 'preview') return ''
+  const branch = vercelDeploymentOrigin(process.env.VERCEL_BRANCH_URL)
+  const deployment = vercelDeploymentOrigin(process.env.VERCEL_URL)
+  if (branch && (requestOrigin === branch || requestOrigin === deployment)) return branch
+  if (!branch && deployment && requestOrigin === deployment) return deployment
+  return ''
 }
 
 export function allowlistedOriginFromRequest(req: Request) {
@@ -123,14 +131,28 @@ export function allowlistedOriginFromRequest(req: Request) {
         ? 'http'
         : 'https'
   const origin = `${proto}://${host}`
+  const vercelEnv = process.env.VERCEL_ENV
+
+  if (vercelEnv === 'production') {
+    if (origin === 'https://www.ezcoverletter.xyz' || origin === 'https://ezcoverletter.xyz') return origin
+    return SITE_URL
+  }
+
+  if (vercelEnv === 'preview') {
+    const preview = previewCallbackOrigin(origin)
+    if (preview) return preview
+    // An unrecognized host is not echoed. A valid branch alias still keeps the
+    // login on Preview instead of falling through to the production site.
+    return vercelDeploymentOrigin(process.env.VERCEL_BRANCH_URL) || SITE_URL
+  }
+
   if (ALLOWED_SUCCESS_ORIGINS.has(origin)) return origin
-  if (currentPreviewOrigins().includes(origin)) return origin
   return SITE_URL
 }
 
 /**
- * Redirect targets stay on the production site, local dev, or this Preview deployment.
- * Any other Host / X-Forwarded-Host value falls back to the canonical origin.
+ * Checkout and login redirects stay on production, local dev, or this Preview branch.
+ * Preview prefers the stable branch alias. Production ignores preview and localhost hosts.
  */
 export function successUrlFromRequest(req: Request) {
   return `${allowlistedOriginFromRequest(req)}/success`
