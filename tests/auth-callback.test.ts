@@ -10,6 +10,7 @@ const originalUrl = process.env.SUPABASE_URL
 const originalAnon = process.env.SUPABASE_ANON_KEY
 const originalVercelEnv = process.env.VERCEL_ENV
 const originalVercelUrl = process.env.VERCEL_URL
+const originalVercelBranchUrl = process.env.VERCEL_BRANCH_URL
 const PREVIEW_HOST = 'ezcoverletter-git-billing-team.vercel.app'
 
 afterEach(() => {
@@ -22,6 +23,8 @@ afterEach(() => {
   else process.env.VERCEL_ENV = originalVercelEnv
   if (originalVercelUrl === undefined) delete process.env.VERCEL_URL
   else process.env.VERCEL_URL = originalVercelUrl
+  if (originalVercelBranchUrl === undefined) delete process.env.VERCEL_BRANCH_URL
+  else process.env.VERCEL_BRANCH_URL = originalVercelBranchUrl
 })
 
 function originFor(host: string, proto: 'http' | 'https') {
@@ -100,6 +103,17 @@ test('the current preview deployment origin is allowlisted', () => {
   assert.equal(originFor(PREVIEW_HOST, 'https'), `https://${PREVIEW_HOST}`)
   assert.equal(originFor('www.ezcoverletter.xyz', 'https'), 'https://www.ezcoverletter.xyz')
   assert.equal(originFor('localhost:3000', 'http'), 'http://localhost:3000')
+})
+
+
+test('the stable Vercel Preview branch alias is allowlisted for login callbacks', () => {
+  process.env.VERCEL_ENV = 'preview'
+  process.env.VERCEL_URL = PREVIEW_HOST
+  process.env.VERCEL_BRANCH_URL = 'my-app-git-billing-test-tiger-teng2026s-projects.vercel.app'
+  assert.equal(
+    originFor('my-app-git-billing-test-tiger-teng2026s-projects.vercel.app', 'https'),
+    'https://my-app-git-billing-test-tiger-teng2026s-projects.vercel.app',
+  )
 })
 
 test('other preview and external hosts are rejected', () => {
