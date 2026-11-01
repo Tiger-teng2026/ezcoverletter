@@ -101,14 +101,16 @@ function isVercelDeploymentHost(host: string) {
 }
 
 /**
- * Vercel sets VERCEL_URL to this deployment's hostname, with no scheme.
- * Only that exact HTTPS origin is added, and only while VERCEL_ENV is preview.
+ * Vercel exposes both the unique deployment hostname (VERCEL_URL) and the
+ * stable branch alias (VERCEL_BRANCH_URL). Accept only those exact HTTPS hosts,
+ * and only in Preview; never widen this to arbitrary *.vercel.app hosts.
  */
-function currentPreviewOrigin() {
-  if (process.env.VERCEL_ENV !== 'preview') return ''
-  const host = process.env.VERCEL_URL?.trim().toLowerCase() || ''
-  if (!isVercelDeploymentHost(host)) return ''
-  return `https://${host}`
+function currentPreviewOrigins() {
+  if (process.env.VERCEL_ENV !== 'preview') return []
+  return [...new Set([process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]
+    .map((value) => value?.trim().toLowerCase() || '')
+    .filter(isVercelDeploymentHost)
+    .map((host) => `https://${host}`))]
 }
 
 export function allowlistedOriginFromRequest(req: Request) {
@@ -122,8 +124,7 @@ export function allowlistedOriginFromRequest(req: Request) {
         : 'https'
   const origin = `${proto}://${host}`
   if (ALLOWED_SUCCESS_ORIGINS.has(origin)) return origin
-  const previewOrigin = currentPreviewOrigin()
-  if (previewOrigin && origin === previewOrigin) return origin
+  if (currentPreviewOrigins().includes(origin)) return origin
   return SITE_URL
 }
 
