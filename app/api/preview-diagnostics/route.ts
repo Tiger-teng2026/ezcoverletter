@@ -8,7 +8,7 @@ function present(name: string) {
 }
 
 function normalizedUrl(name: string) {
-  return (process.env[name]?.trim() || '').replace(/\\/+$/, '')
+  return (process.env[name]?.trim() || '').replace(/\/+$/, '')
 }
 
 export async function GET() {
