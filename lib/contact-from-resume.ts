@@ -6,6 +6,10 @@ const SKIP_LINE =
 const JOB_TITLE_HINT =
   /\b(designer|engineer|manager|developer|analyst|director|consultant|specialist|architect|scientist|intern|officer|executive|founder|president|coordinator|associate|recruiter|marketer|accountant|lawyer|attorney|nurse|teacher|professor|researcher|product|software|marketing|sales|senior|junior|principal|staff)\b/i
 
+/** Words that describe skills or duties, not a person's name. */
+const SKILL_OR_DUTY =
+  /\b(communication|analytical|analysis|skills?|experience|management|projects?|strong|excellent|proven|abilities|ability|teamwork|leadership|creative|passionate|results|driven|strategic|campaigns?|proficient|knowledge|responsible|managed|developed|led|across|including|with)\b/i
+
 /** Common resume / LinkedIn role crumbs that must never become part of a person's name. */
 const ROLE_SUFFIX =
   /^(pm|pmp|mba|phd|ph\.?d|jr|jnr|sr|snr|ii|iii|iv|md|cpa|cfa|eng|hr|ux|ui|qa|sre|devops|cto|ceo|cfo|coo|vp|svp|evp|intern|contractor)$/i
@@ -45,24 +49,6 @@ function stripRoleSuffixes(value: string): string {
     words.pop()
   }
   return words.join(' ').trim()
-}
-
-function wordCount(name: string) {
-  return name.split(/\s+/).filter(Boolean).length
-}
-
-/** Higher is better. Prefer "First Last" over a single glued token. */
-function scoreName(name: string): number {
-  const words = wordCount(name)
-  let score = 0
-  if (words >= 2) score += 100
-  if (words === 2) score += 20
-  if (words === 3) score += 10
-  if (words === 1) score += 10
-  // Prefer names that already contain a normal space (First Last)
-  if (/\s/.test(name)) score += 50
-  score += Math.min(name.length, 30)
-  return score
 }
 
 function nameFromLinkedIn(url: string | undefined) {
@@ -169,40 +155,49 @@ function normalizeNameCandidate(raw: string): string | undefined {
   return candidate
 }
 
+function isProseLine(line: string) {
+  const words = line.trim().split(/\s+/).filter(Boolean)
+  if (words.length >= 6) return true
+  if (/[.!?]$/.test(line.trim()) && words.length >= 4) return true
+  if (/,/.test(line) && words.length >= 3) return true
+  if (SKILL_OR_DUTY.test(line) && words.length >= 3) return true
+  return false
+}
+
+function reliablePersonName(value: string | undefined) {
+  if (!value) return undefined
+  const words = value.split(/\s+/).filter(Boolean)
+  if (words.length < 2 || words.length > 4) return undefined
+  if (SKILL_OR_DUTY.test(value) || JOB_TITLE_HINT.test(value)) return undefined
+  return value
+}
+
+/**
+ * A typed sign-off wins over a later autofill. An empty field can still be filled.
+ */
+export function preferEnteredValue(current: string, extracted?: string) {
+  if (current.trim()) return current
+  return extracted?.trim() || ''
+}
+
 function extractFullName(text: string, email?: string, linkedin?: string): string | undefined {
   const lines = text
     .split('\n')
-    .map((l) => l.trim())
+    .map((line) => line.trim())
     .filter(Boolean)
     .slice(0, 12)
 
-  const candidates: string[] = []
-
   for (const line of lines) {
+    if (isProseLine(line)) break
     if (SKIP_LINE.test(line)) continue
     if (looksLikePhone(line) || looksLikeUrl(line) || /@/.test(line)) continue
 
     const fromLabeled = line.match(/^(?:full\s*)?name\s*[:：\-–—]\s*(.+)$/i)
-    if (fromLabeled?.[1]) {
-      const named = normalizeNameCandidate(fromLabeled[1])
-      if (named) candidates.push(named)
-    }
-
-    const named = normalizeNameCandidate(line)
-    if (named) candidates.push(named)
+    const named = reliablePersonName(normalizeNameCandidate(fromLabeled?.[1] || line))
+    if (named) return named
   }
 
-  const fromLinkedIn = nameFromLinkedIn(linkedin)
-  if (fromLinkedIn) candidates.push(fromLinkedIn)
-
-  const fromEmail = nameFromEmail(email)
-  if (fromEmail) candidates.push(fromEmail)
-
-  if (candidates.length === 0) return undefined
-
-  // Prefer "Michael Chen" (spaced) over "Michaelchen" (glued)
-  candidates.sort((a, b) => scoreName(b) - scoreName(a))
-  return candidates[0]
+  return reliablePersonName(nameFromLinkedIn(linkedin)) || reliablePersonName(nameFromEmail(email))
 }
 
 /** Best-effort contact extraction from pasted resume text (for form autofill only). */

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Download, FileText, Loader2, Lock } from 'lucide-react'
-import { extractContactFromResume } from '@/lib/contact-from-resume'
+import { extractContactFromResume, preferEnteredValue } from '@/lib/contact-from-resume'
 import { toFrictionCopyText } from '@/lib/copy-letter'
 import { loadContact, saveContact } from '@/lib/draft-storage'
 import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
@@ -92,19 +92,19 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
 
   useEffect(() => {
     const stored = loadContact()
-    if (stored.fullName) setFullName((prev) => prev || stored.fullName || '')
-    if (stored.phone) setPhone((prev) => prev || stored.phone || '')
-    if (stored.email) setEmail((prev) => prev || stored.email || '')
-    if (stored.linkedin) setLinkedin((prev) => prev || stored.linkedin || '')
+    if (stored.fullName) setFullName((prev) => preferEnteredValue(prev, stored.fullName))
+    if (stored.phone) setPhone((prev) => preferEnteredValue(prev, stored.phone))
+    if (stored.email) setEmail((prev) => preferEnteredValue(prev, stored.email))
+    if (stored.linkedin) setLinkedin((prev) => preferEnteredValue(prev, stored.linkedin))
   }, [])
 
   useEffect(() => {
     if (!resume.trim()) return
     const extracted = extractContactFromResume(resume)
-    setFullName((prev) => prev || extracted.fullName || '')
-    setPhone((prev) => prev || extracted.phone || '')
-    setEmail((prev) => prev || extracted.email || '')
-    setLinkedin((prev) => prev || extracted.linkedin || '')
+    setFullName((prev) => preferEnteredValue(prev, extracted.fullName))
+    setPhone((prev) => preferEnteredValue(prev, extracted.phone))
+    setEmail((prev) => preferEnteredValue(prev, extracted.email))
+    setLinkedin((prev) => preferEnteredValue(prev, extracted.linkedin))
   }, [resume])
 
   useEffect(() => {
@@ -126,7 +126,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(toFrictionCopyText(letter))
+      await navigator.clipboard.writeText(toFrictionCopyText(letter, contact))
       track('cover_letter_copy')
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)
@@ -282,7 +282,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             type="button"
             onClick={handleCopy}
             disabled={!hasContent}
-            title="Free: copy raw text with placeholders"
+            title="Copy the letter as plain text"
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {copied ? (
@@ -341,8 +341,8 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             <div className="flex flex-col gap-0.5">
               <p className="text-[13px] font-semibold">Sign-off details for PDF / Word</p>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Autofilled from your resume when possible. Required before PDF or Word export —
-                Free Copy never uses these fields.
+                Autofilled from your resume when possible. Copy uses only the fields you fill in.
+                PDF and Word still require all four, with no placeholders.
               </p>
             </div>
             <p

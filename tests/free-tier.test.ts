@@ -5,12 +5,51 @@ import { toFrictionCopyText } from '../lib/copy-letter.ts'
 import { prepareLetterForExport } from '../lib/export-letter.ts'
 import { parseMatchResult } from '../lib/match-schema.ts'
 
-test('free copy still returns text and keeps the placeholder sign-off', () => {
-  const text = toFrictionCopyText('I led the migration.\n\nBest regards,\nSomeone')
-  assert.match(text, /I led the migration/)
-  assert.match(text, /\[User Full Name\]/)
-  assert.match(text, /\[Email\]/)
-  assert.doesNotMatch(text, /jane@example.com/)
+test('free copy is plain text and omits unfilled sign-off placeholders', () => {
+  const letter = [
+    'Dear Hiring Manager,',
+    '',
+    "I'm a digital marketing specialist with a **proven** record in well-known campaigns.",
+    '',
+    'On the analytical side, I improved results by 20% — and kept the 15-minute ask.',
+    '',
+    '- Led a cross-channel rollout.',
+    '',
+    'Best regards,',
+    '[User Full Name]',
+    '[Phone] | [Email] | [LinkedIn]',
+  ].join('\n')
+
+  const text = toFrictionCopyText(letter)
+  assert.match(text, /Dear Hiring Manager,/)
+  assert.match(text, /I'm a digital marketing specialist with a proven record in well-known campaigns\./)
+  assert.match(text, /On the analytical side, I improved results by 20% — and kept the 15-minute ask\./)
+  assert.match(text, /- Led a cross-channel rollout\./)
+  assert.match(text, /Best regards,/)
+  assert.equal(text.includes('**'), false)
+  assert.equal(text.includes('* #'), false)
+  assert.equal(text.includes('# *'), false)
+  assert.equal(text.includes('-- #'), false)
+  assert.equal(text.includes('##'), false)
+  assert.equal(text.includes('[Phone]'), false)
+  assert.equal(text.includes('[Email]'), false)
+  assert.equal(text.includes('[LinkedIn]'), false)
+  assert.equal(text.includes('[User Full Name]'), false)
+  assert.match(text, /\n\nI'm a digital marketing specialist/)
+  assert.match(text, /\n\nOn the analytical side/)
+})
+
+test('free copy includes only the sign-off fields the user filled in', () => {
+  const text = toFrictionCopyText('I led the migration.', {
+    fullName: 'John Smith',
+    phone: '',
+    email: 'john@example.com',
+    linkedin: '[LinkedIn]',
+  })
+  assert.equal(
+    text,
+    'I led the migration.\n\nBest regards,\nJohn Smith\njohn@example.com',
+  )
 })
 
 test('job match parsing still accepts a valid score payload', () => {
