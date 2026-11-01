@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { effectivePlan, utcMonthPeriod } from '@/lib/billing/access'
 import { PAID_PERIOD, keepsPaidAccess, legacyCycleId, nextUtcMonthStart, paidAccountId } from '@/lib/billing/cycle'
-import { MemoryLedger, allowanceFor, type HistoryRecord, type SubscriptionRecord } from '@/lib/billing/ledger'
+import { MemoryLedger, allowanceFor, creditChargeFromRpc, readCreditRpc, type HistoryRecord, type SubscriptionRecord } from '@/lib/billing/ledger'
 import { CREDIT_COSTS, QUOTA_MESSAGE, SIGN_IN_UNAVAILABLE, USAGE_UNAVAILABLE, type CreditAction } from '@/lib/plans'
 import { entitlementSecret, readRequestCookie } from '@/lib/entitlement'
 import { createSupabaseLedger } from '@/lib/billing/supabase-ledger'
@@ -202,21 +202,28 @@ async function consumeSignedInCredit(userId: string, cost: number, action: strin
     p_idempotency_key: idempotencyKey,
     p_now: now.toISOString(),
   })
-  if (error || !data || typeof data !== 'object') {
-    return { ok: false as const, status: 503, error: USAGE_UNAVAILABLE, code: 'not_configured' }
+  if (error) {
+    console.error('[billing] consume_ai_credit', error.code || 'failed')
+    return { ok: false as const, status: 503, error: USAGE_UNAVAILABLE, code: 'rpc_unavailable' }
   }
-  const row = data as { ok?: boolean; code?: string; reservationId?: string; replay?: boolean; output?: unknown }
-  if (!row.ok) {
-    const code = row.code === 'in_progress' || row.code === 'replay_failed' ? row.code : 'quota'
+  const charged = creditChargeFromRpc(data, false)
+  if (!charged.ok) {
+    const confirmed = readCreditRpc(data)?.ok === true
+    if (charged.code === 'rpc_unavailable' && !confirmed) {
+      return { ok: false as const, status: 503, error: USAGE_UNAVAILABLE, code: 'rpc_unavailable' }
+    }
+    if (charged.code === 'rpc_unavailable') {
+      return { ok: false as const, status: 503, error: USAGE_UNAVAILABLE, code: 'not_configured' }
+    }
     const message =
-      code === 'quota'
+      charged.code === 'quota'
         ? QUOTA_MESSAGE
-        : code === 'in_progress'
+        : charged.code === 'in_progress'
           ? 'This request is already running.'
           : 'The previous attempt failed and was not charged. Start a new request to try again.'
-    return { ok: false as const, status: code === 'quota' ? 402 : 409, error: message, code }
+    return { ok: false as const, status: charged.code === 'quota' ? 402 : 409, error: message, code: charged.code }
   }
-  return { ok: true as const, reservationId: String(row.reservationId), replay: row.replay ? row.output : undefined }
+  return { ok: true as const, reservationId: charged.reservationId, replay: charged.replay }
 }
 
 function finishUsage(
@@ -261,10 +268,10 @@ export async function beginAiUsage(req: Request, action: CreditAction, meta: Usa
   const idempotencyKey = cleanIdempotency(req.headers.get('idempotency-key'))
   if (!testingBilling() && identity.kind === 'user') {
     const charged = await consumeSignedInCredit(identity.userId, CREDIT_COSTS[action], action, idempotencyKey, now)
-    if (!charged.ok) {
+    if (charged.ok) return finishUsage(ledger, identity, meta, charged.reservationId, charged.replay)
+    if (charged.code !== 'rpc_unavailable') {
       return { ok: false, status: charged.status, error: charged.error, code: charged.code, cookies: identity.cookies }
     }
-    return finishUsage(ledger, identity, meta, charged.reservationId, charged.replay)
   }
   let activeSubscription = subscription
   if (
@@ -281,14 +288,19 @@ export async function beginAiUsage(req: Request, action: CreditAction, meta: Usa
     }
   }
   const bucket = creditBucket(identity, activeSubscription, access.plan, now)
-  const reserved = await ledger.reserve({
-    accountId: bucket.accountId,
-    period: bucket.period,
-    cost: CREDIT_COSTS[action],
-    allowance: bucket.allowance,
-    action,
-    idempotencyKey,
-  })
+  let reserved: Awaited<ReturnType<typeof ledger.reserve>>
+  try {
+    reserved = await ledger.reserve({
+      accountId: bucket.accountId,
+      period: bucket.period,
+      cost: CREDIT_COSTS[action],
+      allowance: bucket.allowance,
+      action,
+      idempotencyKey,
+    })
+  } catch {
+    return { ok: false, status: 503, error: USAGE_UNAVAILABLE, code: 'not_configured', cookies: identity.cookies }
+  }
   if (!reserved.ok) {
     const message =
       reserved.code === 'quota'

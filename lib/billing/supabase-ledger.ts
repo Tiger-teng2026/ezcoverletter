@@ -1,14 +1,5 @@
-import type { HistoryRecord, ReserveResult, SubscriptionRecord } from '@/lib/billing/ledger'
+import { readCreditRpc, type HistoryRecord, type ReserveResult, type SubscriptionRecord } from '@/lib/billing/ledger'
 import { supabaseServiceClient } from '@/lib/supabase/server'
-
-type RpcResult = {
-  ok?: boolean
-  code?: ReserveResult extends { ok: false; code: infer Code } ? Code : string
-  remaining?: number
-  reservationId?: string
-  replay?: boolean
-  output?: unknown
-}
 
 /** Service-role client. Browser code must not import this module. */
 export function createSupabaseLedger() {
@@ -32,11 +23,12 @@ export function createSupabaseLedger() {
         p_action: input.action,
         p_idempotency_key: input.idempotencyKey || '',
       })
-      if (error || !data || typeof data !== 'object') throw new Error('credit reserve failed')
-      const row = data as RpcResult
+      const row = error ? null : readCreditRpc(data)
+      if (!row) throw new Error('credit reserve failed')
       if (!row.ok) {
         return { ok: false, code: row.code === 'in_progress' || row.code === 'replay_failed' ? row.code : 'quota', remaining: row.remaining ?? 0 }
       }
+      if (!row.reservationId) throw new Error('credit reserve failed')
       return {
         ok: true,
         reservationId: String(row.reservationId),

@@ -415,3 +415,72 @@ export class MemoryLedger {
 export function allowanceFor(plan: PlanId) {
   return PLANS[plan].monthlyCredits
 }
+
+export type CreditRpcRow = {
+  ok?: boolean
+  code?: string
+  reservationId?: string
+  replay?: boolean
+  output?: unknown
+  remaining?: number
+}
+
+function creditRpcValue(data: unknown) {
+  let value = data
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (typeof value === 'string') {
+      try {
+        value = JSON.parse(value) as unknown
+      } catch {
+        return null
+      }
+      continue
+    }
+    if (Array.isArray(value)) {
+      if (value.length !== 1) return null
+      value = value[0]
+      continue
+    }
+    break
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const record = value as Record<string, unknown>
+  const hasCharge =
+    'ok' in record || 'reservationId' in record || 'reservation_id' in record || 'reservationid' in record
+  if (!hasCharge) {
+    const nested = Object.values(record).filter((item) => item && typeof item === 'object')
+    if (nested.length === 1) return creditRpcValue(nested[0])
+  }
+  return record
+}
+
+/** PostgREST may return jsonb as an object, one row, a JSON string, or a function envelope. */
+export function readCreditRpc(data: unknown): CreditRpcRow | null {
+  const record = creditRpcValue(data)
+  if (!record) return null
+  const reservationId = record.reservationId ?? record.reservation_id ?? record.reservationid
+  return {
+    ok: typeof record.ok === 'boolean' ? record.ok : undefined,
+    code: typeof record.code === 'string' ? record.code : undefined,
+    reservationId: reservationId == null || reservationId === '' ? undefined : String(reservationId),
+    replay: record.replay === true,
+    output: record.output,
+    remaining: typeof record.remaining === 'number' ? record.remaining : undefined,
+  }
+}
+
+export function creditChargeFromRpc(data: unknown, failed: boolean) {
+  if (failed) return { ok: false as const, code: 'rpc_unavailable' as const }
+  const row = readCreditRpc(data)
+  if (!row || (row.ok && !row.reservationId)) return { ok: false as const, code: 'rpc_unavailable' as const }
+  if (!row.ok) {
+    const code = row.code === 'in_progress' || row.code === 'replay_failed' ? row.code : 'quota'
+    return { ok: false as const, code }
+  }
+  return {
+    ok: true as const,
+    reservationId: String(row.reservationId),
+    replay: row.replay ? row.output : undefined,
+    remaining: row.remaining ?? 0,
+  }
+}

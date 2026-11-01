@@ -11,7 +11,7 @@ import { DELETE as historyDelete, GET as historyGet } from '../app/api/history/[
 import { GET as historyList } from '../app/api/history/route.ts'
 import { effectivePlan, utcMonthPeriod } from '../lib/billing/access.ts'
 import { applyCreemEvent } from '../lib/billing/events.ts'
-import { MemoryLedger } from '../lib/billing/ledger.ts'
+import { MemoryLedger, creditChargeFromRpc } from '../lib/billing/ledger.ts'
 import { useTestLedger } from '../lib/billing/runtime.ts'
 import { creemSignatureHex } from '../lib/creem-signature.ts'
 import { ENTITLEMENT_COOKIE, sealEntitlement } from '../lib/entitlement.ts'
@@ -81,6 +81,19 @@ function mockAts() {
     }) } }],
   })
 }
+
+test('a credit RPC payload can be an object, a JSON string, or one row', () => {
+  const success = { ok: true, reservationId: 'res_1', remaining: 9 }
+  assert.equal(creditChargeFromRpc(success, false).ok, true)
+  assert.equal(creditChargeFromRpc(JSON.stringify(success), false).ok, true)
+  assert.equal(creditChargeFromRpc(JSON.stringify(JSON.stringify(success)), false).ok, true)
+  assert.equal(creditChargeFromRpc([success], false).ok, true)
+  assert.equal(creditChargeFromRpc({ consume_ai_credit: success }, false).ok, true)
+  assert.equal(creditChargeFromRpc({ ok: true, reservation_id: 'res_2', remaining: 8 }, false).ok, true)
+  assert.deepEqual(creditChargeFromRpc({ ok: false, code: 'quota' }, false), { ok: false, code: 'quota' })
+  assert.deepEqual(creditChargeFromRpc(null, true), { ok: false, code: 'rpc_unavailable' })
+  assert.deepEqual(creditChargeFromRpc(null, false), { ok: false, code: 'rpc_unavailable' })
+})
 
 test('plan prices and credit weights live in one config', () => {
   assert.equal(PLANS.free.monthlyPriceUsd, 0)
