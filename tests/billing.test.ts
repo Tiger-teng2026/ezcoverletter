@@ -15,7 +15,7 @@ import { MemoryLedger, creditChargeFromRpc } from '../lib/billing/ledger.ts'
 import { useTestLedger } from '../lib/billing/runtime.ts'
 import { creemSignatureHex } from '../lib/creem-signature.ts'
 import { ENTITLEMENT_COOKIE, sealEntitlement } from '../lib/entitlement.ts'
-import { CREDIT_COSTS, PLANS, PRO_EXPORT } from '../lib/plans.ts'
+import { ANON_IDENTITY_UNAVAILABLE, CREDIT_COSTS, PLANS, PRO_EXPORT } from '../lib/plans.ts'
 import { resetRateLimit } from '../lib/request-guard.ts'
 
 const USER_A = '11111111-1111-4111-8111-111111111111'
@@ -281,6 +281,18 @@ test('database and sign-in stay closed when they are not configured', async () =
   assert.equal(forged.status, 405)
   const account = await accountGet(new Request('https://www.ezcoverletter.xyz/api/account?plan=pro'))
   assert.equal(account.status, 503)
+})
+
+test('a missing entitlement secret is not reported as a missing database', async () => {
+  delete process.env.EZCL_BILLING_TEST
+  delete process.env.ENTITLEMENT_SECRET
+  process.env.SUPABASE_URL = 'https://example.supabase.co'
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role'
+  useTestLedger(null)
+  const account = await accountGet(new Request('https://www.ezcoverletter.xyz/api/account'))
+  const body = await account.json()
+  assert.equal(account.status, 503)
+  assert.equal(body.error, ANON_IDENTITY_UNAVAILABLE)
 })
 
 test('RLS policies and the atomic credit update are in the migration', () => {

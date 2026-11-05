@@ -69,6 +69,9 @@ export const QUOTA_MESSAGE =
 export const USAGE_UNAVAILABLE =
   'AI usage tracking is not configured. Monthly credits stay off until the Supabase database is configured.'
 
+export const ANON_IDENTITY_UNAVAILABLE =
+  'Signed-out credit tracking is not configured. Sign in, or set the server entitlement secret.'
+
 export const SIGN_IN_UNAVAILABLE = 'Sign-in is not configured.'
 
 export const SAVE_NOTICE =

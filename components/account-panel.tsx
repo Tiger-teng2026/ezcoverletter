@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { LoginForm } from '@/components/login-form'
 import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
 import { savedResultTitle } from '@/lib/history-display'
 import { formatUsd, PLANS, PRO_EXPORT } from '@/lib/plans'
@@ -24,7 +25,15 @@ type Account = {
   error?: string
 }
 
-export function AccountPanel({ billingReturn, welcome }: { billingReturn: boolean; welcome?: boolean }) {
+export function AccountPanel({
+  billingReturn,
+  welcome,
+  signInConfigured,
+}: {
+  billingReturn: boolean
+  welcome?: boolean
+  signInConfigured: boolean
+}) {
   const [account, setAccount] = useState<Account | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cancelMessage, setCancelMessage] = useState<string | null>(null)
@@ -66,7 +75,22 @@ export function AccountPanel({ billingReturn, welcome }: { billingReturn: boolea
     load()
   }, [])
 
-  if (error) return <p role="alert" className="rounded-xl border border-border bg-card px-4 py-3 text-[13px]">{error}</p>
+  if (error) {
+    return (
+      <div className="flex flex-col gap-5">
+        <p role="alert" className="rounded-xl border border-border bg-card px-4 py-3 text-[13px]">{error}</p>
+        <section className="rounded-2xl border border-border bg-card px-5 py-5">
+          <h2 className="text-[15px] font-semibold">Sign in</h2>
+          <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            We email you a one-time link. No password is stored on this site.
+          </p>
+          <div className="mt-4">
+            <LoginForm configured={signInConfigured} />
+          </div>
+        </section>
+      </div>
+    )
+  }
   if (!account) return <p className="text-[13px] text-muted-foreground">Loading account…</p>
 
   return (

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { AccountPanel } from '@/components/account-panel'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { readSupabaseAuth } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
   title: 'Account — EzCoverLetter',
@@ -19,7 +20,11 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           Your plan, credits, and saved results. Subscription status changes only after Creem confirms them.
         </p>
         <div className="mt-8">
-          <AccountPanel billingReturn={params.billing === 'return'} welcome={params.welcome === '1'} />
+          <AccountPanel
+            billingReturn={params.billing === 'return'}
+            welcome={params.welcome === '1'}
+            signInConfigured={Boolean(readSupabaseAuth())}
+          />
         </div>
       </main>
       <SiteFooter />

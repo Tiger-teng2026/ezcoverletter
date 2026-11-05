@@ -2,7 +2,7 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { effectivePlan, utcMonthPeriod } from '@/lib/billing/access'
 import { PAID_PERIOD, keepsPaidAccess, legacyCycleId, nextUtcMonthStart, paidAccountId } from '@/lib/billing/cycle'
 import { MemoryLedger, allowanceFor, creditChargeFromRpc, readCreditRpc, type HistoryRecord, type SubscriptionRecord } from '@/lib/billing/ledger'
-import { CREDIT_COSTS, QUOTA_MESSAGE, SIGN_IN_UNAVAILABLE, USAGE_UNAVAILABLE, type CreditAction } from '@/lib/plans'
+import { ANON_IDENTITY_UNAVAILABLE, CREDIT_COSTS, QUOTA_MESSAGE, SIGN_IN_UNAVAILABLE, USAGE_UNAVAILABLE, type CreditAction } from '@/lib/plans'
 import { entitlementSecret, readRequestCookie } from '@/lib/entitlement'
 import { createSupabaseLedger } from '@/lib/billing/supabase-ledger'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -103,7 +103,7 @@ export async function accountSnapshot(req: Request, now = new Date()) {
   if (!ledger) return { ok: false as const, status: 503, error: USAGE_UNAVAILABLE, cookies: [] as string[] }
   const identity = await identify(req)
   if (!identity || (identity.kind === 'anon' && !identity.anonId)) {
-    return { ok: false as const, status: 503, error: USAGE_UNAVAILABLE, cookies: [] }
+    return { ok: false as const, status: 503, error: entitlementSecret() ? USAGE_UNAVAILABLE : ANON_IDENTITY_UNAVAILABLE, cookies: [] }
   }
   const subscription = identity.kind === 'user' ? await ledger.getSubscription(identity.userId) : null
   const access = effectivePlan(subscription, now)
@@ -261,7 +261,13 @@ export async function beginAiUsage(req: Request, action: CreditAction, meta: Usa
   if (!ledger) return { ok: false, status: 503, error: USAGE_UNAVAILABLE, code: 'not_configured', cookies: [] }
   const identity = await identify(req)
   if (!identity || (identity.kind === 'anon' && !identity.anonId)) {
-    return { ok: false, status: 503, error: USAGE_UNAVAILABLE, code: 'not_configured', cookies: [] }
+    return {
+      ok: false,
+      status: 503,
+      error: entitlementSecret() ? USAGE_UNAVAILABLE : ANON_IDENTITY_UNAVAILABLE,
+      code: 'not_configured',
+      cookies: [],
+    }
   }
   const subscription = identity.kind === 'user' ? await ledger.getSubscription(identity.userId) : null
   const access = effectivePlan(subscription, now)
