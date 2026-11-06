@@ -42,6 +42,23 @@ test('the cover letter prompt forbids experience the resume does not provide', (
   assert.match(prompt, /You may improve the English\. You may not change the facts\./)
 })
 
+test('the system prompt forbids unsupported time spans and a second call to action', () => {
+  const source = readFileSync(new URL('../app/api/generate/route.ts', import.meta.url), 'utf8')
+  const systemPrompt = source.slice(source.indexOf('const SYSTEM_PROMPT'), source.indexOf('const MATCH_PROMPT_ADDENDUM'))
+  assert.match(systemPrompt, /Do not infer how long a responsibility lasted/)
+  assert.match(systemPrompt, /all or most of those years/)
+  assert.match(systemPrompt, /much of that time/)
+  assert.match(systemPrompt, /for most of those years/)
+  assert.match(systemPrompt, /eight years of experience in B2B analytics and leadership of a team of six analysts/)
+  assert.match(systemPrompt, /exactly one call to action/)
+  assert.match(systemPrompt, /Do not invite an interview, phone call, or further conversation a second time/)
+  const prompt = buildSystemPrompt('natural', false, null)
+  assert.match(prompt, /Never turn "six analysts" into "six years" or "six of those years."/)
+  assert.match(prompt, /45% traffic increase/)
+  assert.match(prompt, /I have eight years of experience in B2B analytics and have led a team of six analysts/)
+  assert.match(prompt, /Never write "much of that time" or "for most of those years"/)
+})
+
 test('cover letter generation still uses one streaming DeepSeek call', () => {
   const source = readFileSync(new URL('../app/api/generate/route.ts', import.meta.url), 'utf8')
   assert.match(source, /model: 'deepseek-chat'/)
