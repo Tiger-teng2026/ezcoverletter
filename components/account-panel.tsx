@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { LoginForm } from '@/components/login-form'
 import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
-import { savedResultTitle } from '@/lib/history-display'
+import { formatSavedDate, savedResultTitle } from '@/lib/history-display'
 import { formatUsd, PLANS, PRO_EXPORT } from '@/lib/plans'
 
 type Account = {
@@ -106,10 +106,10 @@ export function AccountPanel({
       <section className="rounded-2xl border border-border bg-card px-5 py-5">
         <h2 className="text-[15px] font-semibold">{account.signedIn ? account.email || 'Signed in' : 'Signed out'}</h2>
         <p className="mt-2 text-[13px] text-muted-foreground">
-          Plan: {PLANS[account.plan].name} · {account.remaining} of {account.allowance} credits left. Resets {account.resetAt || account.periodStart}.
+          Plan: {PLANS[account.plan].name} · {account.remaining} of {account.allowance} credits left. Resets {formatSavedDate(account.resetAt || account.periodStart)}.
         </p>
         <p className="mt-2 text-[13px] text-muted-foreground">Status: {account.status}</p>
-        {account.currentPeriodEnd ? <p className="mt-2 text-[13px] text-muted-foreground">Current period ends {account.currentPeriodEnd}</p> : null}
+        {account.currentPeriodEnd ? <p className="mt-2 text-[13px] text-muted-foreground">Current period ends {formatSavedDate(account.currentPeriodEnd)}</p> : null}
         {account.scheduledPlan ? (
           <p className="mt-2 text-[13px] leading-relaxed">
             A later plan name was stored locally. This period keeps the current allowance. Creem has not been asked to change the next charge.

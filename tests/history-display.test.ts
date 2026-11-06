@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { coverLetterPlainText, presentSavedResult, savedResultTitle } from '@/lib/history-display'
+import { coverLetterPlainText, formatSavedDate, presentSavedResult, savedResultTitle } from '@/lib/history-display'
 
 const ROLE = 'Senior Product Designer, Growth Platform, Activation, and Experimentation — Northwind'
 const JOB = `${ROLE}\nSan Francisco, CA\n\nAbout the role:\nOwn activation experiments for the hub launch and partner with product and engineering.`
 const RESUME = 'Alex Chen\nProduct designer with six years of SaaS experience and a shipped activation hub.'
+
+test('a UTC month reset stays on December 1 even though Pacific local time is still November', () => {
+  assert.equal(formatSavedDate('2026-12-01T00:00:00.000Z'), 'December 1, 2026')
+  assert.equal(
+    new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'America/Los_Angeles' }).format(
+      new Date('2026-12-01T00:00:00.000Z'),
+    ),
+    'November 30, 2026',
+  )
+})
 
 test('a job match record renders the score and skills without raw JSON', () => {
   const view = presentSavedResult({

@@ -50,16 +50,31 @@ Use it only as a lens on the resume — never as a source of new facts:
 - Ground the story in the experience-match notes, with concrete resume metrics and projects.
 - Treat suggestions as editing guidance: highlight real proof the candidate already has. Do not invent missing skills, tools, employers, or outcomes.
 - Do not claim skills listed as missing unless they are explicitly present in the resume.
+- Do not reinterpret a number in the match notes. Keep the unit that appears in the resume.
 - Keep the letter specific and human. Avoid generic AI template language and empty claims.
 `.trim()
 
-function buildSystemPrompt(
+const FACT_RULES = `
+FACTUAL CONSTRAINTS:
+The resume is the only source of facts about the candidate's experience.
+- Do not invent employers, degrees, jobs, projects, or outcomes the resume does not state.
+- Do not change what a number means, and do not change the unit attached to that number.
+- A headcount is not a length of time. Never turn "six analysts" into "six years" or "six of those years."
+- A length of time is not a headcount. Never turn years of experience into a number of people.
+- An amount of money is not a percentage, and a percentage is not an amount of money. "Improved organic website traffic by 45%" stays a 45% traffic increase.
+- Do not merge two separate facts into a new claim the resume does not make. "Eight years shipping B2B analytics and leading six analysts" is eight years in B2B analytics, and leadership of a team of six analysts. It is not six years of leadership.
+- If you cannot tell what a number refers to, keep the resume's wording or leave that detail out.
+- You may improve the English. You may not change the facts.
+`.trim()
+
+export function buildSystemPrompt(
   tone: string,
   highlightKeywords: boolean,
   matchAnalysis: JobMatchResult | null,
 ) {
   return [
     SYSTEM_PROMPT,
+    FACT_RULES,
     `Tone preference from the user: ${TONE_RULES[tone]}`,
     highlightKeywords
       ? 'Wrap each phrase that is a direct keyword match between the resume and the job description in **double asterisks**. Highlight at most 12 phrases.'
@@ -71,7 +86,7 @@ function buildSystemPrompt(
     .join('\n\n')
 }
 
-function buildUserContent(
+export function buildUserContent(
   resume: string,
   job: string,
   matchAnalysis: JobMatchResult | null,
