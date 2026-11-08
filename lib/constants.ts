@@ -11,16 +11,17 @@ export const CREEM_LIVE_PRODUCT_ID = 'prod_6QbprGqKxrIfm6zJJIVGfO'
 export const CREEM_CHECKOUT_URL = `https://www.creem.io/payment/${CREEM_LIVE_PRODUCT_ID}`
 
 /**
- * Hosts confirmed from Creem's checkout API docs (`checkout.creem.io`)
- * and Creem's official site (`www.creem.io`). Exact host match only.
+ * Exact Creem checkout hosts. Preview returned https checkout URLs on `creem.io`.
+ * `checkout.creem.io` and `www.creem.io` stay allowed. No wildcard.
  */
-const CREEM_CHECKOUT_HOSTS = new Set(['checkout.creem.io', 'www.creem.io'])
+const CREEM_CHECKOUT_HOSTS = new Set(['creem.io', 'checkout.creem.io', 'www.creem.io'])
 
 /** Checkout redirects may only leave the app for these Creem checkout hosts. */
 export function isCreemHostedCheckoutUrl(value: string) {
   try {
     const url = new URL(value)
-    return url.protocol === 'https:' && CREEM_CHECKOUT_HOSTS.has(url.hostname)
+    if (url.protocol !== 'https:' || url.port || url.username || url.password) return false
+    return CREEM_CHECKOUT_HOSTS.has(url.hostname)
   } catch {
     return false
   }

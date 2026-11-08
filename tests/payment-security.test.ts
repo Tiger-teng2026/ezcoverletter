@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, test } from 'node:test'
-import { CREEM_LIVE_PRODUCT_ID } from '../lib/constants.ts'
+import { CREEM_LIVE_PRODUCT_ID, isCreemHostedCheckoutUrl } from '../lib/constants.ts'
 import { successUrlFromRequest } from '../lib/creem.ts'
 import {
   ENTITLEMENT_COOKIE,
@@ -348,9 +348,9 @@ describe('payment verification and export authorization', { concurrency: 1 }, ()
     globalThis.fetch = async () =>
       Response.json({ id: 'chk_test', checkout_url: 'https://creem.io/checkout/chk_test' })
     const apex = await checkoutPost(new Request('http://localhost:3000/api/checkout', { method: 'POST' }))
-    const apexText = await apex.text()
-    assert.equal(apex.status, 502)
-    assert.equal(apexText.includes('creem.io/checkout'), false)
+    const apexPayload = await apex.json()
+    assert.equal(apex.status, 200)
+    assert.equal(apexPayload.checkoutUrl, 'https://creem.io/checkout/chk_test')
 
     globalThis.fetch = async () =>
       Response.json({ id: 'chk_test', checkout_url: 'https://checkout.creem.io.evil.example/ch_test' })
@@ -358,6 +358,21 @@ describe('payment verification and export authorization', { concurrency: 1 }, ()
     const lookalikeText = await lookalike.text()
     assert.equal(lookalike.status, 502)
     assert.equal(lookalikeText.includes('evil.example'), false)
+  })
+
+  test('checkout hosts stay exact https names and reject credentials', () => {
+    assert.equal(isCreemHostedCheckoutUrl('https://creem.io/checkout/chk_test'), true)
+    assert.equal(isCreemHostedCheckoutUrl('https://checkout.creem.io/ch_test'), true)
+    assert.equal(isCreemHostedCheckoutUrl('https://www.creem.io/checkout/chk_test'), true)
+    assert.equal(isCreemHostedCheckoutUrl('http://creem.io/checkout/chk_test'), false)
+    assert.equal(isCreemHostedCheckoutUrl('https://evilcreem.io/checkout/chk_test'), false)
+    assert.equal(isCreemHostedCheckoutUrl('https://creem.io.evil.com/checkout/chk_test'), false)
+    assert.equal(isCreemHostedCheckoutUrl('https://evil.com/checkout/chk_test'), false)
+    assert.equal(isCreemHostedCheckoutUrl('https://user:secret@creem.io/checkout/chk_test'), false)
+    assert.equal(isCreemHostedCheckoutUrl('https://user@checkout.creem.io/ch_test'), false)
+    assert.equal(isCreemHostedCheckoutUrl('https://creem.io:8443/checkout'), false)
+    assert.equal(isCreemHostedCheckoutUrl('https://checkout.creem.io:8080/checkout'), false)
+    assert.equal(isCreemHostedCheckoutUrl('https://www.creem.io:443/checkout/chk_test'), true)
   })
 
   test('missing CREEM_PRODUCT_ID refuses checkout and does not call Creem', async () => {
