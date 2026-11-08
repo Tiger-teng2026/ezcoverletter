@@ -7,7 +7,16 @@ export type CreemCheckout = {
   checkoutUrl?: string
   product?: unknown
   product_id?: unknown
+  order?: unknown
+  units?: unknown
+  custom_price?: unknown
+  discount?: unknown
+  discount_id?: unknown
 }
+
+/** Creem `order.amount_paid` is an integer number of cents. 499 is $4.99. */
+export const ONE_TIME_EXPORT_AMOUNT_CENTS = 499
+export const ONE_TIME_EXPORT_CURRENCY = 'USD'
 
 const ALLOWED_SUCCESS_ORIGINS = new Set([
   'https://www.ezcoverletter.xyz',
@@ -178,11 +187,87 @@ function checkoutProductIds(session: CreemCheckout) {
   return ids
 }
 
+export type ExportOrderAssessment =
+  | { ok: true }
+  | {
+      ok: false
+      reason: 'amount_missing' | 'currency_missing' | 'amount_mismatch' | 'currency_mismatch' | 'product_mismatch' | 'tax_mode'
+    }
+
+function recordOf(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+}
+
+function integerCents(value: unknown) {
+  return typeof value === 'number' && Number.isInteger(value) ? value : null
+}
+
+/**
+ * One-time export price check shared by Retrieve Checkout and webhooks.
+ * Product price, order amount, and subtotal are 499 USD cents.
+ * Exclusive tax is added on top. Inclusive tax stays inside that 499 cents.
+ * Missing fields are not defaulted.
+ */
+export function assessExportOrder(checkout: CreemCheckout): ExportOrderAssessment {
+  const product = recordOf(checkout.product)
+  if (!product) return { ok: false, reason: 'product_mismatch' }
+  if (integerCents(product.price) !== ONE_TIME_EXPORT_AMOUNT_CENTS) return { ok: false, reason: 'amount_mismatch' }
+  if (product.currency !== ONE_TIME_EXPORT_CURRENCY) return { ok: false, reason: 'currency_mismatch' }
+  if (product.tax_mode !== 'exclusive' && product.tax_mode !== 'inclusive') return { ok: false, reason: 'tax_mode' }
+
+  if (checkout.custom_price != null) return { ok: false, reason: 'amount_mismatch' }
+  if (checkout.units != null && checkout.units !== 1) return { ok: false, reason: 'amount_mismatch' }
+  if (checkout.discount_id != null || checkout.discount != null) return { ok: false, reason: 'amount_mismatch' }
+
+  const order = recordOf(checkout.order)
+  if (!order) return { ok: false, reason: 'amount_missing' }
+  if (order.discount_id != null || order.discount != null) return { ok: false, reason: 'amount_mismatch' }
+  const discountAmount = order.discount_amount
+  if (discountAmount != null && integerCents(discountAmount) !== 0) return { ok: false, reason: 'amount_mismatch' }
+
+  const amount = integerCents(order.amount)
+  const subTotal = integerCents(order.sub_total)
+  const taxAmount = integerCents(order.tax_amount)
+  const amountPaid = integerCents(order.amount_paid)
+  if (amount === null || subTotal === null || taxAmount === null || amountPaid === null) {
+    return { ok: false, reason: 'amount_missing' }
+  }
+  if (taxAmount < 0 || amountPaid < 0) return { ok: false, reason: 'amount_mismatch' }
+  if (order.currency !== ONE_TIME_EXPORT_CURRENCY) return { ok: false, reason: 'currency_mismatch' }
+  if (amount !== ONE_TIME_EXPORT_AMOUNT_CENTS || subTotal !== ONE_TIME_EXPORT_AMOUNT_CENTS) {
+    return { ok: false, reason: 'amount_mismatch' }
+  }
+
+  const expectedPaid =
+    product.tax_mode === 'exclusive' ? ONE_TIME_EXPORT_AMOUNT_CENTS + taxAmount : ONE_TIME_EXPORT_AMOUNT_CENTS
+  if (amountPaid !== expectedPaid) return { ok: false, reason: 'amount_mismatch' }
+  return { ok: true }
+}
+
+/** Price check applies only when this checkout is for the configured one-time product. */
+export function oneTimeExportAmountAccepted(checkout: CreemCheckout, expectedProductId: string) {
+  const expected = expectedProductId.trim()
+  const productIds = checkoutProductIds(checkout)
+  if (!expected || productIds.length === 0 || productIds.some((id) => id !== expected)) return null
+  return assessExportOrder(checkout)
+}
+
 export type PaidCheckoutAssessment =
   | { ok: true; productId: string }
-  | { ok: false; reason: 'not_completed' | 'product_mismatch' | 'query_failed' }
+  | {
+      ok: false
+      reason:
+        | 'not_completed'
+        | 'product_mismatch'
+        | 'query_failed'
+        | 'amount_missing'
+        | 'currency_missing'
+        | 'amount_mismatch'
+        | 'currency_mismatch'
+        | 'tax_mode'
+    }
 
-/** A paid grant requires the requested checkout, status completed, and the configured product only. */
+/** A paid grant requires this checkout, completed status, the configured product, and 499 USD cents. */
 export function assessPaidCheckout(
   session: CreemCheckout,
   expectedCheckoutId: string,
@@ -197,6 +282,9 @@ export function assessPaidCheckout(
   if (productIds.length === 0 || productIds.some((id) => id !== productId)) {
     return { ok: false, reason: 'product_mismatch' }
   }
+
+  const price = assessExportOrder(session)
+  if (!price.ok) return price
 
   return { ok: true, productId }
 }

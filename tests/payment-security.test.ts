@@ -60,7 +60,18 @@ afterEach(() => {
 })
 
 function completedSession(checkoutId = CHECKOUT_ID, product: unknown = { id: TEST_PRODUCT_ID }, status = 'completed') {
-  return { id: checkoutId, status, product }
+  const priced =
+    typeof product === 'string'
+      ? { id: product, price: 499, currency: 'USD', tax_mode: 'exclusive' }
+      : product && typeof product === 'object' && !Array.isArray(product)
+        ? { price: 499, currency: 'USD', tax_mode: 'exclusive', ...product }
+        : product
+  return {
+    id: checkoutId,
+    status,
+    product: priced,
+    order: { amount: 499, sub_total: 499, tax_amount: 0, amount_paid: 499, currency: 'USD', status: 'paid' },
+  }
 }
 
 function mockCheckout(session: unknown, status = 200) {
@@ -152,6 +163,82 @@ describe('payment verification and export authorization', { concurrency: 1 }, ()
       assert.equal(payload.verified, false)
       assert.equal(payload.paymentStatus, status)
       assert.equal(response.headers.get('set-cookie'), null)
+    }
+  })
+
+  test('exclusive and inclusive tax both require a 499 USD product price', async () => {
+    const base = completedSession()
+    const product = { id: TEST_PRODUCT_ID, price: 499, currency: 'USD', tax_mode: 'exclusive' }
+    const order = { amount: 499, sub_total: 499, currency: 'USD', status: 'paid' }
+    for (const tax of [0, 40, 100]) {
+      mockCheckout({
+        ...base,
+        product,
+        order: { ...order, tax_amount: tax, amount_paid: 499 + tax },
+      })
+      const response = await unlockPost(unlockRequest())
+      const payload = await response.json()
+      assert.equal(response.status, 200, `tax ${tax}`)
+      assert.equal(payload.granted, true)
+      assert.equal(payload.verified, true)
+    }
+
+    mockCheckout({
+      ...base,
+      product,
+      order: { ...order, tax_amount: 40, amount_paid: 500 },
+    })
+    const wrongPaid = await unlockPost(unlockRequest())
+    assert.equal(wrongPaid.status, 403)
+    assert.equal((await wrongPaid.json()).granted, false)
+
+    mockCheckout({
+      ...base,
+      product: { ...product, tax_mode: 'inclusive' },
+      order: { ...order, tax_amount: 40, amount_paid: 499 },
+    })
+    const inclusive = await unlockPost(unlockRequest())
+    assert.equal(inclusive.status, 200)
+    assert.equal((await inclusive.json()).granted, true)
+
+    mockCheckout({
+      ...base,
+      product: { ...product, tax_mode: 'inclusive' },
+      order: { ...order, tax_amount: 40, amount_paid: 539 },
+    })
+    const inclusiveAdded = await unlockPost(unlockRequest())
+    assert.equal(inclusiveAdded.status, 403)
+    assert.equal((await inclusiveAdded.json()).granted, false)
+  })
+
+  test('incomplete or altered one-time prices do not unlock', async () => {
+    const accepted = completedSession()
+    const product = accepted.product as Record<string, unknown>
+    const order = accepted.order as Record<string, unknown>
+    const rejected = [
+      { ...accepted, product: { ...product, price: 500 } },
+      { ...accepted, product: { ...product, currency: 'EUR' } },
+      { ...accepted, order: { ...order, amount: 500 } },
+      { ...accepted, order: { ...order, sub_total: 500 } },
+      { ...accepted, order: { ...order, currency: 'EUR' } },
+      { ...accepted, order: { ...order, tax_amount: undefined } },
+      { ...accepted, order: { ...order, amount_paid: undefined } },
+      { ...accepted, product: { ...product, tax_mode: undefined } },
+      { ...accepted, product: { ...product, tax_mode: 'vat' } },
+      { ...accepted, product: TEST_PRODUCT_ID },
+      { ...accepted, custom_price: 499 },
+      { ...accepted, discount_id: 'dis_test' },
+      { ...accepted, order: { ...order, discount_amount: 1 } },
+      { ...accepted, units: 2 },
+    ]
+    for (const session of rejected) {
+      mockCheckout(session)
+      const response = await unlockPost(unlockRequest())
+      const payload = await response.json()
+      assert.equal(payload.granted, false)
+      assert.equal(payload.verified, false)
+      assert.equal(response.headers.get('set-cookie'), null)
+      assert.equal(response.status, 403)
     }
   })
 

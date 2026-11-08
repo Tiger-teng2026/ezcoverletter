@@ -1,5 +1,6 @@
 import { applyCreemEvent, parseCreemEvent } from '@/lib/billing/events'
 import { getLedger, testingBilling } from '@/lib/billing/runtime'
+import { oneTimeExportAmountAccepted } from '@/lib/creem'
 import { verifyCreemSignature } from '@/lib/creem-signature'
 import { USAGE_UNAVAILABLE } from '@/lib/plans'
 import { supabaseServiceClient } from '@/lib/supabase/server'
@@ -17,6 +18,10 @@ export async function POST(req: Request) {
   }
   const event = parseCreemEvent(raw)
   if (!event) return Response.json({ error: 'Invalid webhook payload.' }, { status: 400 })
+  if (event.eventType === 'checkout.completed') {
+    const price = oneTimeExportAmountAccepted(event.object, process.env.CREEM_PRODUCT_ID?.trim() || '')
+    if (price && !price.ok) return Response.json({ error: 'Webhook event was not accepted.' }, { status: 400 })
+  }
   const products = {
     oneTimeProductId: process.env.CREEM_PRODUCT_ID?.trim() || '',
     creatorProductId: process.env.CREEM_CREATOR_PRODUCT_ID?.trim() || '',

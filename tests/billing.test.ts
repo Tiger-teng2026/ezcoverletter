@@ -195,7 +195,7 @@ test('webhook signature, duplicates, expiry, cancellation, and one-time export s
   await applyCreemEvent(ledger, {
     id: 'evt_export',
     eventType: 'checkout.completed',
-    object: { id: 'chk_export_1', status: 'completed', product: { id: EXPORT_PRODUCT }, order: { status: 'paid' }, metadata: { userId: USER_A, plan: 'pro' } },
+    object: { id: 'chk_export_1', status: 'completed', product: { id: EXPORT_PRODUCT, price: 499, currency: 'USD', tax_mode: 'exclusive' }, order: { status: 'paid', amount: 499, sub_total: 499, tax_amount: 0, amount_paid: 499, currency: 'USD' }, metadata: { userId: USER_A, plan: 'pro' } },
   }, products)
   assert.equal((await ledger.getSubscription(USER_A))?.plan, 'creator')
 

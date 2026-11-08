@@ -61,13 +61,19 @@ export async function POST(req: Request) {
       )
     }
 
-    const error =
-      assessed.reason === 'product_mismatch'
-        ? 'This payment does not match Pro Export. Access was not unlocked.'
-        : 'Could not verify this payment with Creem. Pro Export was not unlocked.'
+    const priceRejected =
+      assessed.reason === 'product_mismatch' ||
+      assessed.reason === 'amount_missing' ||
+      assessed.reason === 'currency_missing' ||
+      assessed.reason === 'amount_mismatch' ||
+      assessed.reason === 'currency_mismatch' ||
+      assessed.reason === 'tax_mode'
+    const error = priceRejected
+      ? 'This payment does not match Pro Export. Access was not unlocked.'
+      : 'Could not verify this payment with Creem. Pro Export was not unlocked.'
     return noStoreJson(
       { granted: false, verified: false, reason: assessed.reason, error },
-      assessed.reason === 'product_mismatch' ? 403 : 502,
+      priceRejected ? 403 : 502,
     )
   }
 

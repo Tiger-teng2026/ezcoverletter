@@ -1,3 +1,4 @@
+import { oneTimeExportAmountAccepted } from '@/lib/creem'
 import type { PaidPlanId } from '@/lib/plans'
 import { decideSubscriptionChange, paidAccountId } from '@/lib/billing/cycle'
 import type { SubscriptionRecord, SubscriptionStatus } from '@/lib/billing/ledger'
@@ -121,6 +122,8 @@ async function applyVerifiedEvent(store: Store, event: CreemEvent, products: Pro
     const kind = planFor(product, products)
     const checkoutId = text(event.object.id)
     if (kind === 'export' && checkoutId) {
+      const price = oneTimeExportAmountAccepted(event.object, products.oneTimeProductId)
+      if (price && !price.ok) throw new Error('checkout payment is not verified')
       if (store.grantDocumentExport) {
         await store.grantDocumentExport({ checkoutId, requestId: text(event.object.request_id) || null })
       } else {

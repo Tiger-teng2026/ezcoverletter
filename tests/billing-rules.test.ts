@@ -137,8 +137,8 @@ test('one document cannot start a second live checkout, and a refund blocks a la
     object: {
       id: 'chk_letter',
       status: 'completed',
-      product: { id: 'prod_export' },
-      order: { status: 'paid' },
+      product: { id: 'prod_export', price: 499, currency: 'USD', tax_mode: 'exclusive' },
+      order: { status: 'paid', amount: 499, sub_total: 499, tax_amount: 0, amount_paid: 499, currency: 'USD' },
       request_id: first.requestId,
     },
   }, PRODUCTS)
