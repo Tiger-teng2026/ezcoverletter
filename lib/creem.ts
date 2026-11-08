@@ -213,6 +213,36 @@ export class CreemCheckoutError extends Error {
   }
 }
 
+/** Temporary Preview diagnosis. Logs host and field names only, never the checkout URL. */
+function logCheckoutDiagnosis(status: number, contentType: string, data: unknown) {
+  const record = data && typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : null
+  const checkoutValue = record ? (record.checkout_url ?? record.checkoutUrl) : undefined
+  let protocol = ''
+  let hostname = ''
+  let urlParseable = false
+  if (typeof checkoutValue === 'string') {
+    try {
+      const url = new URL(checkoutValue)
+      protocol = url.protocol
+      hostname = url.hostname
+      urlParseable = true
+    } catch {
+      urlParseable = false
+    }
+  }
+  console.info('[checkout] diagnostic', {
+    httpStatus: status,
+    contentType,
+    fieldNames: record ? Object.keys(record).sort() : [],
+    checkoutUrlPresent: Boolean(record && ('checkout_url' in record || 'checkoutUrl' in record)),
+    checkoutUrlType: checkoutValue === null ? 'null' : typeof checkoutValue,
+    urlParseable,
+    protocol,
+    hostname,
+    allowlisted: typeof checkoutValue === 'string' && isCreemHostedCheckoutUrl(checkoutValue),
+  })
+}
+
 export async function createCreemCheckout(
   config: CreemRuntimeConfig,
   successUrl: string,
@@ -241,6 +271,7 @@ export async function createCreemCheckout(
   }
 
   const data = (await res.json()) as CreemCheckout
+  logCheckoutDiagnosis(res.status, res.headers.get('content-type') || '', data)
   const checkoutUrl = data.checkout_url || data.checkoutUrl
   if (!checkoutUrl || !isCreemHostedCheckoutUrl(checkoutUrl)) {
     console.error('[checkout] Creem session URL was missing or not an allowed checkout host')
