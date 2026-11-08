@@ -127,8 +127,17 @@ export function buildPrintDocumentHtml(letter: string, contact?: SignOffContact)
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Cover Letter</title>
-<style>${LETTER_DOCUMENT_STYLES}</style>
+<title></title>
+<style>${LETTER_DOCUMENT_STYLES}
+  @page {
+    @top-left { content: none; }
+    @top-center { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right { content: none; }
+  }
+</style>
 </head>
 <body>
 <main id="letter">${body}</main>

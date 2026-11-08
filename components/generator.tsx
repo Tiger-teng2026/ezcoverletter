@@ -5,6 +5,7 @@ import { AlertCircle, Briefcase, Check, Loader2, Sparkles, Target, User } from '
 import { MatchError, MatchPanel } from '@/components/match-panel'
 import { ResultPanel } from '@/components/result-panel'
 import { loadDraft, saveDraft } from '@/lib/draft-storage'
+import { useLetterExportAccess } from '@/lib/use-letter-export-access'
 import { track } from '@/lib/ga'
 import { parseMatchResult, type JobMatchResult } from '@/lib/match-schema'
 
@@ -75,6 +76,7 @@ export function Generator() {
   const [tone, setTone] = useState<ToneId>('natural')
   const [highlight, setHighlight] = useState(true)
   const [letter, setLetter] = useState('')
+  const letterUnlocked = useLetterExportAccess(letter)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [matchResult, setMatchResult] = useState<JobMatchResult | null>(null)
@@ -441,9 +443,11 @@ export function Generator() {
           </p>
         ) : (
           <p className="text-center text-[11px] text-muted-foreground">
-            {matchForGenerate
-              ? 'Using your Job Match Score to tailor this letter · Skip match anytime'
-              : 'Copy is included. PDF and Word need an active subscription or a $4.99 purchase of this letter.'}
+            {letterUnlocked
+              ? 'PDF and Word exports are unlocked for this cover letter.'
+              : matchForGenerate
+                ? 'Using your Job Match Score to tailor this letter · Skip match anytime'
+                : 'Copy is included. PDF and Word need an active subscription or a $4.99 purchase of this letter.'}
           </p>
         )}
       </div>
@@ -458,7 +462,7 @@ export function Generator() {
             details filled in.
           </p>
         </div>
-        <ResultPanel letter={letter} isLoading={isLoading} resume={resume} />
+        <ResultPanel letter={letter} isLoading={isLoading} resume={resume} exportUnlocked={letterUnlocked} />
       </div>
     </div>
   )

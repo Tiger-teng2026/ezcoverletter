@@ -3,18 +3,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Download, FileText, Loader2, Lock } from 'lucide-react'
 import { extractContactFromResume, preferEnteredValue } from '@/lib/contact-from-resume'
-import { toFrictionCopyText } from '@/lib/copy-letter'
+import { toFrictionCopyText, toPreviewLetter } from '@/lib/copy-letter'
 import { loadContact, saveContact } from '@/lib/draft-storage'
 import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
 import { exportDocumentForLetter, exportFailureAction, rememberExportDocument } from '@/lib/export-document-session'
 import { track } from '@/lib/ga'
-import { clearProDisplay, useProAccess } from '@/lib/pro-access'
+import { clearProDisplay } from '@/lib/pro-access'
 import type { SignOffContact } from '@/lib/sign-off'
 type Props = {
   letter: string
   isLoading: boolean
   /** Used only to autofill Pro export contact fields from the pasted resume. */
   resume?: string
+  /** Server-confirmed export access for this letter. Not derived from the success URL. */
+  exportUnlocked?: boolean
 }
 
 /** Screen preview: highlight keywords without padding that creates gaps before punctuation. */
@@ -78,8 +80,10 @@ function ContactInput({
 const proButtonClass =
   'inline-flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-200 transition-colors hover:bg-violet-500/20 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400'
 
-export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
-  const hasProAccess = useProAccess()
+const downloadButtonClass =
+  'inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
+
+export function ResultPanel({ letter, isLoading, resume = '', exportUnlocked = false }: Props) {
   const [copied, setCopied] = useState(false)
   const [proHint, setProHint] = useState<string | null>(null)
   const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null)
@@ -270,9 +274,9 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
           </div>
           {hasContent && (
             <p className="pl-6 text-[11px] text-muted-foreground">
-              {hasProAccess
-                ? 'Pro Export unlocked on this browser · PDF and Word use your real sign-off'
-                : 'Copy is included. PDF and Word need a subscription or a purchase of this letter.'}
+              {exportUnlocked
+                ? 'PDF and Word exports are unlocked for this cover letter.'
+                : 'Copy is included. PDF and Word need an active subscription or a $4.99 purchase of this letter.'}
             </p>
           )}
         </div>
@@ -297,30 +301,30 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             type="button"
             onClick={() => void handleWordClick()}
             disabled={!hasContent || exporting !== null}
-            title={hasProAccess ? 'Download Word' : 'Export this letter: Word'}
-            className={proButtonClass}
+            title={exportUnlocked ? 'Word Download' : 'Export this letter: Word'}
+            className={exportUnlocked ? downloadButtonClass : proButtonClass}
           >
-            {hasProAccess ? null : <Lock className="size-3" aria-hidden="true" />}
+            {exportUnlocked ? null : <Lock className="size-3" aria-hidden="true" />}
             <Download className="size-3.5" aria-hidden="true" />
-            Word
-            <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              {hasProAccess ? 'READY' : 'PRO'}
-            </span>
+            {exportUnlocked ? 'Word Download' : 'Word'}
+            {exportUnlocked ? null : (
+              <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">PRO</span>
+            )}
           </button>
 
           <button
             type="button"
             onClick={() => void handlePdfClick()}
             disabled={!hasContent || exporting !== null}
-            title={hasProAccess ? 'Download PDF' : 'Export this letter: PDF'}
-            className={proButtonClass}
+            title={exportUnlocked ? 'PDF Download' : 'Export this letter: PDF'}
+            className={exportUnlocked ? downloadButtonClass : proButtonClass}
           >
-            {hasProAccess ? null : <Lock className="size-3" aria-hidden="true" />}
+            {exportUnlocked ? null : <Lock className="size-3" aria-hidden="true" />}
             <Download className="size-3.5" aria-hidden="true" />
-            PDF
-            <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              {hasProAccess ? 'READY' : 'PRO'}
-            </span>
+            {exportUnlocked ? 'PDF Download' : 'PDF'}
+            {exportUnlocked ? null : (
+              <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">PRO</span>
+            )}
           </button>
         </div>
       </div>
@@ -396,7 +400,7 @@ export function ResultPanel({ letter, isLoading, resume = '' }: Props) {
             aria-live="polite"
             className="letter-preview mx-auto max-w-2xl whitespace-pre-wrap text-[15px] leading-relaxed text-card-foreground"
           >
-            {renderLetter(letter)}
+            {renderLetter(toPreviewLetter(letter, contact))}
           </article>
         ) : (
           <div className="mx-auto flex max-w-md flex-col items-center gap-2 py-10 text-center">

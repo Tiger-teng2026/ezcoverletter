@@ -42,8 +42,13 @@ export function paidExportDocument() {
   return id || null
 }
 
-export function exportDocumentForLetter(letter: string) {
+/** Document saved for this exact letter text. A paid id from another letter is not reused. */
+export function storedExportDocumentForLetter(letter: string) {
   const id = readAll()[hashLetter(letter)]
-  if (typeof id === 'string' && id) return id
-  return paidExportDocument()
+  if (typeof id === 'string' && id.trim()) return id
+  return null
+}
+
+export function exportDocumentForLetter(letter: string) {
+  return storedExportDocumentForLetter(letter) || paidExportDocument()
 }

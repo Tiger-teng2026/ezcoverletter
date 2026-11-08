@@ -26,18 +26,42 @@ export function buildFreeCopySignOff(contact?: SignOffContact) {
   return lines.join('\n')
 }
 
+/** On-screen sign-off. Filled fields stay on the letter's contact line; empty fields are omitted. */
+export function buildPreviewSignOff(contact?: SignOffContact) {
+  const lines = ['Best regards,']
+  const name = filledField(contact?.fullName)
+  if (name) lines.push(name)
+  const contactLine = [contact?.phone, contact?.email, contact?.linkedin]
+    .map((field) => filledField(field))
+    .filter(Boolean)
+    .join(' | ')
+  if (contactLine) lines.push(contactLine)
+  return lines.join('\n')
+}
+
+/**
+ * Clipboard text matching the letter the page shows, without emphasis markers.
+ */
+function letterBody(letter: string) {
+  return stripTrailingSignOff(letter.replace(/\u00a0/g, ' ').replace(/\r\n/g, '\n'))
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/** Screen letter. Keyword marks stay; the sign-off uses only the contact fields entered so far. */
+export function toPreviewLetter(letter: string, contact?: SignOffContact): string {
+  const body = letterBody(letter)
+  const signOff = buildPreviewSignOff(contact)
+  if (!body) return signOff
+  return `${body}\n\n${signOff}`
+}
+
 /**
  * Clipboard text matching the letter the page shows, without emphasis markers.
  */
 export function toFrictionCopyText(letter: string, contact?: SignOffContact): string {
-  const visible = letter
-    .replace(/\u00a0/g, ' ')
-    .replace(/\r\n/g, '\n')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-  const body = stripTrailingSignOff(visible)
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  const body = letterBody(letter).replace(/\*\*([^*]+)\*\*/g, '$1')
   const signOff = buildFreeCopySignOff(contact)
   if (!body) return signOff
   return `${body}\n\n${signOff}`
