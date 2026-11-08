@@ -3,6 +3,7 @@ import {
   parseMatchResult,
   type JobMatchResult,
 } from '@/lib/match-schema'
+import { enforceLetterFacts } from '@/lib/letter-facts'
 import { withCanonicalSignOff } from '@/lib/sign-off'
 import { beginAiUsage } from '@/lib/billing/runtime'
 import { usageTextResponse } from '@/lib/ai-usage'
@@ -11,11 +12,11 @@ export const maxDuration = 60
 
 const TONE_RULES: Record<string, string> = {
   professional:
-    'Confident and polished business English. Full sentences, no slang.',
+    'Confident and polished business English. Full sentences, no slang. Stay inside the resume facts. Do not invent results to sound more accomplished.',
   concise:
-    'Extremely tight. Every sentence carries new information. Prefer the shorter end of the word budget.',
+    'Extremely tight. Every sentence carries new information. Prefer the shorter end of the word budget. Stay inside the resume facts. Do not add facts to fill a sentence, and do not drop a stated number.',
   natural:
-    'Warm, plain-spoken, first-person voice that sounds like a real person typed it. Contractions are welcome; vary sentence length.',
+    'Warm, plain-spoken, first-person voice that sounds like a real person typed it. Contractions are welcome; vary sentence length. Stay inside the resume facts. Natural wording must not invent experience, tools, numbers, or outcomes.',
 }
 
 function describeError(error: unknown) {
@@ -37,7 +38,7 @@ You are an expert executive resume writer and career coach in Silicon Valley. Yo
 CRITICAL RULES TO FOLLOW:
 1. NO PLACEHOLDERS IN BODY: Never output placeholders like "[Company Name]", "[Hiring Manager Name]", "[User Full Name]", "[Phone]", "[Email]", or "[LinkedIn]" in the letter. Extract the actual company name and project details from the Job Description. If the company name is truly missing, use a professional greeting like "Dear Hiring Manager,".
 2. PROFESSIONAL TONE: Keep the tone strictly professional, confident, and result-oriented. DO NOT use overly casual, cheesy, or conversational phrases (such as "swap stories" or "grab a coffee").
-3. VALUE & METRICS: Focus on business value, problem-solving, and quantifiable metrics (e.g., percentages, scale, speed improvements) from the user's resume. Do not infer how long a responsibility lasted. A total tenure plus a duty does not mean that duty lasted for all or most of those years. Never write "much of that time", "for most of those years", or any other time span the resume does not state. Separate facts may share one sentence, but do not add a time relationship the resume does not provide. "Eight years shipping B2B analytics and leading six analysts" means eight years of experience in B2B analytics and leadership of a team of six analysts.
+3. VALUE & METRICS: Focus on business value, problem-solving, and quantifiable metrics (e.g., percentages, scale, speed improvements) only when the user's resume states them. If the resume states a number, keep that exact number and its unit. If the resume does not state a number, do not create one. Do not infer how long a responsibility lasted. A total tenure plus a duty does not mean that duty lasted for all or most of those years. Never write "much of that time", "for most of those years", or any other time span the resume does not state. Separate facts may share one sentence, but do not add a time relationship the resume does not provide. "Eight years shipping B2B analytics and leading six analysts" means eight years of experience in B2B analytics and leadership of a team of six analysts.
 4. ONE CALL TO ACTION: End the letter body with exactly one call to action, a short request for a 15-minute conversation. Do not invite an interview, phone call, or further conversation a second time. Do not repeat the same point to make the letter longer. The final paragraph should be short, natural, and professional.
 5. FORMAT: Keep it clean, structured, and ready to send directly to an HR manager.
 6. NO SIGN-OFF: Do NOT include any closing or signature — not "Best regards,", "Best,", "Sincerely,", a name line, phone, email, LinkedIn, or any signature block. End after the single CTA paragraph only. The system will append exactly one canonical sign-off after generation.
@@ -65,6 +66,15 @@ The resume is the only source of facts about the candidate's experience.
 - Do not merge two separate facts into a new claim the resume does not make. "Eight years shipping B2B analytics and leading six analysts" is eight years in B2B analytics, and leadership of a team of six analysts. It is not six years of leadership. The acceptable wording is "I have eight years of experience in B2B analytics and have led a team of six analysts."
 - Do not infer how many years a duty lasted. Do not assume a duty filled all or most of the total tenure. Never write "much of that time" or "for most of those years" unless the resume states that span.
 - If you cannot tell what a number refers to, keep the resume's wording or leave that detail out.
+- The job description is only a list of requirements, keywords, and target skills. It is not evidence that the candidate has done that work.
+- Do not turn a job requirement into a claim that the candidate already has that experience, skill, or tool.
+- Do not invent years of experience, projects, achievements, numbers, technical tools, team-management results, client cases, or specific work outcomes.
+- You may rewrite and organize experience that the resume already states.
+- You may emphasize a skill, tool, or result only when the resume already states it and it matches the role.
+- When the job asks for something the resume does not support, use cautious wording. Do not say the candidate has already done that work.
+- A warmer or more natural tone is not a reason to invent experience. Professional, concise, and natural wording must all stay inside these facts.
+- Do not keep an unsupported requirement by rewording it as a fact.
+- Counterexample. Resume: "Product Manager. Eight years shipping B2B analytics. Led six analysts." Job description: "Write requirements alongside SQL stakeholders." Forbidden: "Writing requirements alongside SQL stakeholders is central to how I work." Also forbidden: any paraphrase that says the candidate already writes requirements with SQL stakeholders, partners with them, or that this work is how the candidate operates. Allowed: "I would welcome the opportunity to discuss how my product management experience could support your team's work with SQL stakeholders."
 - You may improve the English. You may not change the facts.
 `.trim()
 
@@ -81,7 +91,7 @@ export function buildSystemPrompt(
       ? 'Wrap each phrase that is a direct keyword match between the resume and the job description in **double asterisks**. Highlight at most 12 phrases.'
       : 'Do not use any markdown emphasis, asterisks, or headings.',
     matchAnalysis ? MATCH_PROMPT_ADDENDUM : '',
-    'Never invent employers, degrees, metrics, or dates that are not in the resume. Output only the letter body (greeting + paragraphs + CTA) — no commentary and no sign-off.',
+    'Factual accuracy outranks tone. Professional, Concise, and Natural Human wording must not invent experience the resume does not state. Never invent employers, degrees, metrics, or dates that are not in the resume. Output only the letter body (greeting + paragraphs + CTA) — no commentary and no sign-off.',
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -263,7 +273,9 @@ export async function POST(req: Request) {
           }
         }
 
-        const cleanedText = withCanonicalSignOff(cleanPlaceholders(aiResponseText))
+        const cleanedText = withCanonicalSignOff(
+          cleanPlaceholders(enforceLetterFacts(resume, job, aiResponseText)),
+        )
         if (!cleanedText) {
           await started.refund()
           controller.enqueue(encoder.encode('[Generation failed] Empty response from DeepSeek.'))
