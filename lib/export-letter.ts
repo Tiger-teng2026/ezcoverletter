@@ -70,7 +70,6 @@ function buildLetterBodyHtml(letter: string, contact?: SignOffContact): string {
 const LETTER_DOCUMENT_STYLES = `
   @page {
     size: letter;
-    margin: 1in;
   }
   * {
     box-sizing: border-box;
@@ -130,12 +129,16 @@ export function buildPrintDocumentHtml(letter: string, contact?: SignOffContact)
 <title></title>
 <style>${LETTER_DOCUMENT_STYLES}
   @page {
+    margin: 0;
     @top-left { content: none; }
     @top-center { content: none; }
     @top-right { content: none; }
     @bottom-left { content: none; }
     @bottom-center { content: none; }
     @bottom-right { content: none; }
+  }
+  #letter {
+    padding: 1in;
   }
 </style>
 </head>
@@ -170,6 +173,9 @@ export function buildWordDocumentHtml(letter: string, contact?: SignOffContact):
 <![endif]-->
 <style>
 ${LETTER_DOCUMENT_STYLES}
+  @page {
+    margin: 1in;
+  }
 </style>
 </head>
 <body>

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { toPreviewLetter } from '../lib/copy-letter.ts'
+import { printHtmlDocument } from '../lib/export-download.ts'
 import { buildPrintDocumentHtml, buildWordDocumentHtml } from '../lib/export-letter.ts'
 import { letterExportUnlocked } from '../lib/letter-export-access.ts'
 
@@ -63,7 +64,103 @@ test('pdf and word keep the same body, real contact, and no generated title or t
   assert.doesNotMatch(pdf, /<title>Cover Letter<\/title>/)
   assert.doesNotMatch(pdf, /datetime|timestamp|generated at/i)
   assert.doesNotMatch(word, /datetime|timestamp|generated at/i)
+  assert.doesNotMatch(pdf, /EzCoverLetter|AI Job Search Toolkit/)
+  assert.doesNotMatch(word, /EzCoverLetter|AI Job Search Toolkit/)
+  assert.match(pdf, /@page\s*\{[^}]*margin:\s*0/)
+  assert.match(pdf, /#letter\s*\{[^}]*padding:\s*1in/)
+  assert.match(word, /@page\s*\{[^}]*margin:\s*1in/)
+  assert.doesNotMatch(word, /padding:\s*1in/)
+  assert.equal(pdf.match(/<main id="letter"><p>([^<]*)<\/p>/)?.[1], 'Dear Hiring Manager,')
+  assert.match(pdf, /margin:\s*0 0 10pt 0/)
 })
+
+test('printing clears and restores the iframe document title', () => {
+  const pdf = buildPrintDocumentHtml(LETTER, CONTACT)
+  assert.equal(pdf.match(/<main id="letter"><p>([^<]*)<\/p>/)?.[1], 'Dear Hiring Manager,')
+  assert.doesNotMatch(pdf, /EzCoverLetter|AI Job Search Toolkit|datetime|timestamp|generated at/i)
+  assert.match(pdf, /@page\s*\{[^}]*margin:\s*0/)
+
+  const success = runPrint(pdf, () => {})
+  assert.equal(success.frameTitleAtPrint, '')
+  assert.equal(success.mainTitleAtPrint, 'EzCoverLetter — AI Job Search Toolkit')
+  assert.equal(success.mainDocument.title, 'EzCoverLetter — AI Job Search Toolkit')
+  assert.equal(success.frameDocument.title, 'EzCoverLetter — AI Job Search Toolkit')
+  assert.equal(success.iframe.removed, false)
+  success.timers.shift()?.()
+  assert.equal(success.iframe.removed, true)
+
+  const failure = runPrint(pdf, () => {
+    throw new Error('print failed')
+  })
+  assert.equal(failure.frameTitleAtPrint, '')
+  assert.equal(failure.mainDocument.title, 'EzCoverLetter — AI Job Search Toolkit')
+  assert.equal(failure.frameDocument.title, 'EzCoverLetter — AI Job Search Toolkit')
+  assert.equal(failure.iframe.removed, false)
+})
+
+function runPrint(html: string, print: () => void) {
+  const frameDocument = {
+    title: 'EzCoverLetter — AI Job Search Toolkit',
+    readyState: 'complete',
+    open() {},
+    write() {},
+    close() {},
+  }
+  const iframe = {
+    contentDocument: frameDocument,
+    contentWindow: {
+      document: frameDocument,
+      focus() {},
+      print,
+    },
+    removed: false,
+    setAttribute() {},
+    remove() {
+      this.removed = true
+    },
+  }
+  const mainDocument = {
+    title: 'EzCoverLetter — AI Job Search Toolkit',
+    body: { appendChild() {} },
+    createElement() {
+      return iframe
+    },
+  }
+  const timers: Array<() => void> = []
+  const previousDocument = globalThis.document
+  const previousWindow = globalThis.window
+  let frameTitleAtPrint = 'unset'
+  let mainTitleAtPrint = 'unset'
+  const originalPrint = iframe.contentWindow.print
+  iframe.contentWindow.print = () => {
+    frameTitleAtPrint = frameDocument.title
+    mainTitleAtPrint = mainDocument.title
+    originalPrint()
+  }
+  Object.assign(globalThis, {
+    document: mainDocument,
+    window: {
+      setTimeout(callback: () => void) {
+        timers.push(callback)
+        return timers.length
+      },
+    },
+  })
+  try {
+    printHtmlDocument(html)
+    const triggerPrint = timers.shift()
+    assert.equal(typeof triggerPrint, 'function')
+    try {
+      triggerPrint?.()
+    } catch (error) {
+      assert.match(error instanceof Error ? error.message : '', /print failed/)
+    }
+    return { mainDocument, frameDocument, iframe, timers, frameTitleAtPrint, mainTitleAtPrint }
+  } finally {
+    globalThis.document = previousDocument
+    globalThis.window = previousWindow
+  }
+}
 
 test('one purchased letter does not unlock a different letter', () => {
   assert.equal(

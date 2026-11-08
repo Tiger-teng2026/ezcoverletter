@@ -24,11 +24,18 @@ export function printHtmlDocument(html: string) {
   }
 
   const triggerPrint = () => {
+    const printedDocument = frameWindow.document
+    const previousTitle = printedDocument.title
+    printedDocument.title = ''
     try {
       frameWindow.focus()
       frameWindow.print()
     } finally {
-      window.setTimeout(cleanup, 1000)
+      try {
+        printedDocument.title = previousTitle
+      } finally {
+        window.setTimeout(cleanup, 1000)
+      }
     }
   }
 
