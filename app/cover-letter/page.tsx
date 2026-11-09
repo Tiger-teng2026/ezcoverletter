@@ -5,7 +5,7 @@ import { ToolShell } from '@/components/tool-shell'
 export const metadata: Metadata = {
   title: 'Cover Letter Generator — EzCoverLetter',
   description:
-    'Paste a resume and job description, see a Job Match Score, and generate a professional, concise, or natural cover letter. Copy is free. PDF and Word are Pro Export.',
+    'Paste a resume and job description, see a Job Match Score, and generate a professional, concise, or natural cover letter. Copy is included. PDF and Word for one saved letter are $4.99 one-time, with no subscription required.',
 }
 
 export default function CoverLetterPage() {

@@ -25,7 +25,7 @@ export default function TermsPage() {
           <p>
             The Free plan includes {PLANS.free.monthlyCredits} AI credits each UTC month. Creator is {formatUsd(PLANS.creator.monthlyPriceUsd)} per month
             for {PLANS.creator.monthlyCredits} credits each billing period. Pro is {formatUsd(PLANS.pro.monthlyPriceUsd)} per month for {PLANS.pro.monthlyCredits} credits each billing period.
-            Active Creator and Pro subscriptions include cover letter PDF and Word until the paid period ends. {PRO_EXPORT.name} is {formatUsd(PRO_EXPORT.priceUsd)} one-time for one saved letter.
+            {PRO_EXPORT.name} is {formatUsd(PRO_EXPORT.priceUsd)} one-time for PDF and Word of one saved letter, and no subscription is required. Active Creator and Pro subscriptions also include cover letter PDF and Word until the paid period ends.
             Fees are charged as displayed at checkout. Generated text is provided as-is without guarantee of employment outcomes.
           </p>
           <p>

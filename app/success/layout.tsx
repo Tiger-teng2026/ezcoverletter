@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Pro Export — EzCoverLetter',
-  description: 'Confirm your EzCoverLetter Pro Export purchase and return to download PDF or Word.',
+  title: 'Letter export — EzCoverLetter',
+  description: 'Confirm the one-time cover letter export purchase and return to download PDF or Word. No subscription is required.',
   robots: { index: false, follow: false },
 }
 

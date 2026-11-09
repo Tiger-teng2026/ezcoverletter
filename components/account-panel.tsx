@@ -117,7 +117,7 @@ export function AccountPanel({
         ) : null}
         {account.message ? <p className="mt-2 text-[13px] leading-relaxed">{account.message}</p> : null}
         <p className="mt-3 text-[13px] text-muted-foreground">
-          {PRO_EXPORT.name} ({formatUsd(PRO_EXPORT.priceUsd)} one-time) unlocks PDF and Word for one saved cover letter. An active Creator or Pro subscription includes export until that period ends.
+          {PRO_EXPORT.name} ({formatUsd(PRO_EXPORT.priceUsd)} one-time) unlocks PDF and Word for one saved cover letter. No subscription is required. An active Creator or Pro subscription also includes export until that paid period ends.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           {account.signedIn ? (

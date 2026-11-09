@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { SiteHeader } from '@/components/site-header'
 import { SiteFooter } from '@/components/site-footer'
 import { CONTACT_EMAIL } from '@/lib/constants'
+import { formatUsd, PLANS, PRO_EXPORT } from '@/lib/plans'
 
 export const metadata = {
   title: 'Privacy Policy — EzCoverLetter',
@@ -23,12 +24,11 @@ export default function PrivacyPage() {
             submissions and the generated drafts are saved to your account until you delete them. We do
             not use that content for marketing or to train models. If you are not signed in, we do not
             store the resume, job description, or generated draft on our servers. A
-            draft and Pro Export unlock may stay in this browser so you can return after checkout.
+            draft and one-time export unlock may stay in this browser so you can return after checkout.
             Clear site data in your browser to remove them.
           </p>
           <p>
-            Payments are handled by Creem. Creator and Pro are monthly subscriptions. Single Document
-            Export is a $4.99 one-time purchase for one saved cover letter. We do not collect or store your full payment card
+            Payments are handled by Creem. {PRO_EXPORT.name} is {formatUsd(PRO_EXPORT.priceUsd)} one-time for one saved cover letter, and no subscription is required. Creator ({formatUsd(PLANS.creator.monthlyPriceUsd)}/month) and Pro ({formatUsd(PLANS.pro.monthlyPriceUsd)}/month) are optional subscriptions. We do not collect or store your full payment card
             details on our site. Please review Creem&apos;s privacy practices for checkout-related
             data.
           </p>

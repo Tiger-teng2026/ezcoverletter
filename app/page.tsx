@@ -36,7 +36,7 @@ export default function Page() {
               Six tools for English-speaking job searches. Free includes {PLANS.free.monthlyCredits} AI credits each UTC
               month. Creator is {formatUsd(PLANS.creator.monthlyPriceUsd)}/month for {PLANS.creator.monthlyCredits} credits
               per billing period. Pro is {formatUsd(PLANS.pro.monthlyPriceUsd)}/month for {PLANS.pro.monthlyCredits} credits
-              per billing period. Active subscriptions include PDF and Word export. {PRO_EXPORT.name} is {formatUsd(PRO_EXPORT.priceUsd)} for one saved letter.
+              per billing period. {PRO_EXPORT.name} is {formatUsd(PRO_EXPORT.priceUsd)} one-time for one saved letter, and no subscription is required. Active Creator and Pro subscriptions also include PDF and Word export during the paid period.
             </p>
 
             <div className="mt-1 flex flex-col items-center gap-3 sm:flex-row sm:gap-4">

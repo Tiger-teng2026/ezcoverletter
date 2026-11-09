@@ -63,6 +63,14 @@ export function formatUsd(amount: number) {
   return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`
 }
 
+/** User-facing pricing. One-time export does not require Creator or Pro. */
+export const ONE_TIME_EXPORT_NOTE = `${PRO_EXPORT.name} is ${formatUsd(PRO_EXPORT.priceUsd)} one-time for one saved letter. No subscription is required.`
+
+export const SUBSCRIPTION_EXPORT_NOTE =
+  'An active Creator or Pro subscription also includes PDF and Word export until that paid period ends.'
+
+export const LETTER_EXPORT_LOCKED_COPY = `Copy is included. PDF and Word for this letter are ${formatUsd(PRO_EXPORT.priceUsd)} one-time. No subscription is required. ${SUBSCRIPTION_EXPORT_NOTE}`
+
 export const QUOTA_MESSAGE =
   'AI credits for this period are used up. Upgrade to Creator or Pro for a higher allowance, or wait until the allowance resets.'
 

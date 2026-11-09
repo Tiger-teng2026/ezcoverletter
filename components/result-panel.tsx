@@ -8,6 +8,7 @@ import { loadContact, saveContact } from '@/lib/draft-storage'
 import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
 import { exportDocumentForLetter, exportFailureAction, rememberExportDocument } from '@/lib/export-document-session'
 import { track } from '@/lib/ga'
+import { formatUsd, LETTER_EXPORT_LOCKED_COPY, PRO_EXPORT } from '@/lib/plans'
 import { clearProDisplay } from '@/lib/pro-access'
 import type { SignOffContact } from '@/lib/sign-off'
 type Props = {
@@ -179,7 +180,7 @@ export function ResultPanel({ letter, isLoading, resume = '', exportUnlocked = f
   function requireContactForExport(): boolean {
     if (!exportReady) {
       setProHint(
-        'Before PDF/Word export, fill in your Full Name, Phone, Email, and LinkedIn below. Pro Export never includes [placeholder] text.',
+        'Before PDF or Word export, fill in your Full Name, Phone, Email, and LinkedIn below. The file never includes placeholder text.',
       )
       window.setTimeout(() => setProHint(null), 6000)
       return false
@@ -276,7 +277,7 @@ export function ResultPanel({ letter, isLoading, resume = '', exportUnlocked = f
             <p className="pl-6 text-[11px] text-muted-foreground">
               {exportUnlocked
                 ? 'PDF and Word exports are unlocked for this cover letter.'
-                : 'Copy is included. PDF and Word need an active subscription or a $4.99 purchase of this letter.'}
+                : LETTER_EXPORT_LOCKED_COPY}
             </p>
           )}
         </div>
@@ -308,7 +309,7 @@ export function ResultPanel({ letter, isLoading, resume = '', exportUnlocked = f
             <Download className="size-3.5" aria-hidden="true" />
             {exportUnlocked ? 'Word Download' : 'Word'}
             {exportUnlocked ? null : (
-              <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">PRO</span>
+              <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">{formatUsd(PRO_EXPORT.priceUsd)}</span>
             )}
           </button>
 
@@ -323,7 +324,7 @@ export function ResultPanel({ letter, isLoading, resume = '', exportUnlocked = f
             <Download className="size-3.5" aria-hidden="true" />
             {exportUnlocked ? 'PDF Download' : 'PDF'}
             {exportUnlocked ? null : (
-              <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">PRO</span>
+              <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">{formatUsd(PRO_EXPORT.priceUsd)}</span>
             )}
           </button>
         </div>
@@ -409,8 +410,7 @@ export function ResultPanel({ letter, isLoading, resume = '', exportUnlocked = f
             </span>
             <p className="text-sm font-medium">Nothing here yet</p>
             <p className="text-[13px] leading-relaxed text-muted-foreground">
-              Paste your resume and job description, then generate. Your letter appears here — with
-              Copy is included. PDF and Word require a verified subscription or a purchase of this letter.
+              Paste your resume and job description, then generate. Copy is included. PDF and Word for this letter are {formatUsd(PRO_EXPORT.priceUsd)} one-time, and no subscription is required.
             </p>
           </div>
         )}

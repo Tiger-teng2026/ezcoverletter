@@ -8,7 +8,7 @@ const FAQS = [
   },
   {
     q: 'Is EzCoverLetter free?',
-    a: `The Free plan includes ${PLANS.free.monthlyCredits} AI credits each UTC month, with no card. Creator is ${formatUsd(PLANS.creator.monthlyPriceUsd)}/month for ${PLANS.creator.monthlyCredits} credits each billing period. Pro is ${formatUsd(PLANS.pro.monthlyPriceUsd)}/month for ${PLANS.pro.monthlyCredits} credits each billing period. Active Creator and Pro subscriptions include cover letter PDF and Word. ${PRO_EXPORT.name} is ${formatUsd(PRO_EXPORT.priceUsd)} one-time for one saved letter and remains available after a subscription ends.`,
+    a: `The Free plan includes ${PLANS.free.monthlyCredits} AI credits each UTC month, with no card. Copy is included. ${PRO_EXPORT.name} is ${formatUsd(PRO_EXPORT.priceUsd)} one-time for PDF and Word of one saved letter, and no subscription is required. Creator is ${formatUsd(PLANS.creator.monthlyPriceUsd)}/month for ${PLANS.creator.monthlyCredits} credits each billing period. Pro is ${formatUsd(PLANS.pro.monthlyPriceUsd)}/month for ${PLANS.pro.monthlyCredits} credits each billing period. Active Creator and Pro subscriptions also include cover letter PDF and Word until that paid period ends. The one-time purchase remains after a subscription ends.`,
   },
   {
     q: 'What is a Job Match Score?',

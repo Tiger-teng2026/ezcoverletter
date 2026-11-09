@@ -8,6 +8,7 @@ import { loadDraft, saveDraft } from '@/lib/draft-storage'
 import { useLetterExportAccess } from '@/lib/use-letter-export-access'
 import { track } from '@/lib/ga'
 import { parseMatchResult, type JobMatchResult } from '@/lib/match-schema'
+import { LETTER_EXPORT_LOCKED_COPY } from '@/lib/plans'
 
 const TONES = [
   { id: 'professional', label: 'Professional' },
@@ -447,7 +448,7 @@ export function Generator() {
               ? 'PDF and Word exports are unlocked for this cover letter.'
               : matchForGenerate
                 ? 'Using your Job Match Score to tailor this letter · Skip match anytime'
-                : 'Copy is included. PDF and Word need an active subscription or a $4.99 purchase of this letter.'}
+                : LETTER_EXPORT_LOCKED_COPY}
           </p>
         )}
       </div>
@@ -458,8 +459,7 @@ export function Generator() {
             Step 5 · Review & export
           </p>
           <p className="text-[13px] text-muted-foreground">
-            Copy is included. PDF and Word use your real sign-off after export is verified.
-            details filled in.
+            Copy is included. PDF and Word for this letter are $4.99 one-time, and no subscription is required.
           </p>
         </div>
         <ResultPanel letter={letter} isLoading={isLoading} resume={resume} exportUnlocked={letterUnlocked} />

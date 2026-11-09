@@ -32,7 +32,7 @@ export default function SuccessPage() {
 
     if (!checkoutId && !orderId) {
       setState('failed')
-      setMessage('No payment confirmation was attached to this page. Pro Export was not unlocked.')
+      setMessage('No payment confirmation was attached to this page. PDF and Word were not unlocked.')
       return
     }
 
@@ -90,25 +90,25 @@ export default function SuccessPage() {
           setMessage(
             documentScoped
               ? 'This cover letter is unlocked. PDF and Word stay available for this letter.'
-              : 'Pro Export is unlocked on this browser. PDF and Word are ready.',
+              : 'This one-time export is unlocked on this browser. PDF and Word are ready. No subscription is required.',
           )
         } else if (view.state === 'pending') {
-          setMessage(payload?.error || 'Payment is still processing. Pro Export stays locked until it completes.')
+          setMessage(payload?.error || 'Payment is still processing. PDF and Word stay locked until it completes.')
         } else if (view.state === 'entitlement_pending') {
           setMessage(
             browserStateSaved
               ? payload?.error ||
-                  'Your payment was confirmed, but Pro Export is not active on this browser yet. Refresh this page. You do not need to pay again.'
-              : 'Your payment was verified, but this browser could not save Pro status. Allow site data for this site, then refresh this page. You do not need to pay again.',
+                  'Your payment was confirmed, but PDF and Word are not active on this browser yet. Refresh this page. You do not need to pay again.'
+              : 'Your payment was verified, but this browser could not save the export unlock. Allow site data for this site, then refresh this page. You do not need to pay again.',
           )
         } else {
-          setMessage(payload?.error || 'Could not confirm this payment. Pro Export was not unlocked.')
+          setMessage(payload?.error || 'Could not confirm this payment. PDF and Word were not unlocked.')
         }
         setState(view.state)
       } catch {
         if (cancelled) return
         setState('failed')
-        setMessage('Could not confirm this payment. Check your connection and try again. Pro Export was not unlocked.')
+        setMessage('Could not confirm this payment. Check your connection and try again. PDF and Word were not unlocked.')
       }
     }
 
@@ -132,13 +132,13 @@ export default function SuccessPage() {
 
         <h1 className="mt-5 text-3xl font-semibold tracking-tight">
           {state === 'granted'
-            ? 'Pro Export unlocked'
+            ? 'Letter export unlocked'
             : state === 'pending'
               ? 'Payment still processing'
               : state === 'checking'
                 ? 'Confirming payment'
                 : state === 'entitlement_pending'
-                  ? 'Pro Export not active yet'
+                  ? 'Letter export not active yet'
                   : 'Payment not confirmed'}
         </h1>
         <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">{message}</p>

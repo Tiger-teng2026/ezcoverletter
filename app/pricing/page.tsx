@@ -9,7 +9,7 @@ import { TOOLS } from '@/lib/toolkit'
 
 export const metadata: Metadata = {
   title: 'Pricing — EzCoverLetter',
-  description: `Free includes ${PLANS.free.monthlyCredits} AI credits a UTC month. Creator is ${formatUsd(PLANS.creator.monthlyPriceUsd)}/month and Pro is ${formatUsd(PLANS.pro.monthlyPriceUsd)}/month. Active subscriptions include PDF and Word export. One saved letter can also be exported for ${formatUsd(PRO_EXPORT.priceUsd)}.`,
+  description: `Free includes ${PLANS.free.monthlyCredits} AI credits a UTC month. Creator is ${formatUsd(PLANS.creator.monthlyPriceUsd)}/month and Pro is ${formatUsd(PLANS.pro.monthlyPriceUsd)}/month. PDF and Word for one saved letter are ${formatUsd(PRO_EXPORT.priceUsd)} one-time, with no subscription required. Active Creator and Pro subscriptions also include export during the paid period.`,
 }
 
 const CARDS = [PLANS.free, PLANS.creator, PLANS.pro] as const
@@ -23,7 +23,7 @@ export default function PricingPage() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Plans for AI credits, plus export for one letter.</h1>
         <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
           Free credits reset at 00:00 UTC on the first day of each month. Creator and Pro credits follow the paid Creem period.
-          An active subscription includes PDF and Word export. A one-time purchase stays attached to one saved letter.
+          PDF and Word for one saved letter are {formatUsd(PRO_EXPORT.priceUsd)} one-time, and no subscription is required. An active Creator or Pro subscription also includes export until that paid period ends. The one-time purchase stays attached to that letter.
           If a paid period is already open, a second subscription checkout is not started. Plan changes are not sent to Creem from this page.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -33,7 +33,7 @@ export default function PricingPage() {
               <p className="mt-2 text-2xl font-semibold">{plan.monthlyPriceUsd === 0 ? 'Free' : `${formatUsd(plan.monthlyPriceUsd)}/month`}</p>
               <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
                 {plan.monthlyCredits} AI credits {plan.id === 'free' ? 'per UTC month' : 'per billing period'}.
-                {plan.id === 'free' ? '' : ' PDF and Word export while the subscription is active.'}
+                {plan.id === 'free' ? ' Copy is included. PDF and Word for one letter are a separate one-time purchase.' : ' Includes PDF and Word export while this subscription is active. The one-time letter purchase does not require this plan.'}
               </p>
               {plan.id === 'free' ? <p className="mt-4 text-[13px]">No card required.</p> : <SubscribeButton plan={plan.id} label={`Subscribe to ${plan.name}`} />}
             </article>
@@ -42,7 +42,7 @@ export default function PricingPage() {
         <div className="mt-6 rounded-2xl border border-border bg-card px-5 py-5">
           <h2 className="text-[15px] font-semibold">{PRO_EXPORT.name} — {formatUsd(PRO_EXPORT.priceUsd)} one-time</h2>
           <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-            Unlocks PDF and Word for one saved cover letter after Creem confirms the payment. It does not start a subscription, and canceling a subscription does not remove it.
+            Unlocks PDF and Word for one saved cover letter after Creem confirms the payment. No subscription is required. It does not start a subscription, and canceling a subscription does not remove it.
           </p>
           <div className="mt-4">
             <UpgradeButton size="lg" />

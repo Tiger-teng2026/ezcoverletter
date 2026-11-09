@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'EzCoverLetter — AI Job Search Toolkit',
     description:
-      'Everything you need to prepare, apply, and interview with confidence. Free, Creator, and Pro plans include monthly AI credits. PDF and Word export is included while a subscription is active, or $4.99 for one saved letter.',
+      'Everything you need to prepare, apply, and interview with confidence. Free, Creator, and Pro plans include monthly AI credits. PDF and Word for one saved letter are $4.99 one-time, with no subscription required. Active Creator and Pro subscriptions also include export.',
     type: 'website',
     url: SITE_URL,
     siteName: 'EzCoverLetter',
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     card: 'summary',
     title: 'EzCoverLetter — AI Job Search Toolkit',
     description:
-      'Everything you need to prepare, apply, and interview with confidence. Free, Creator, and Pro plans include monthly AI credits. PDF and Word export is included while a subscription is active, or $4.99 for one saved letter.',
+      'Everything you need to prepare, apply, and interview with confidence. Free, Creator, and Pro plans include monthly AI credits. PDF and Word for one saved letter are $4.99 one-time, with no subscription required. Active Creator and Pro subscriptions also include export.',
   },
   // Google Search Console HTML tag verification
   // Replace the content string in Search Console if you regenerate the meta tag.

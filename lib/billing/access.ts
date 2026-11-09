@@ -43,7 +43,7 @@ export function effectivePlan(sub: SubscriptionRecord | null, now = new Date()):
     return {
       plan: 'free',
       status: 'refunded',
-      message: 'A refund was recorded for this subscription. Paid credits are off. Pro Export is a separate one-time purchase.',
+      message: 'A refund was recorded for this subscription. Paid credits are off. PDF and Word for one saved letter remain a separate one-time purchase, and no subscription is required.',
     }
   }
   if (KEEPING_ACCESS.has(sub.status) && !inPeriod) {
