@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, Download, FileText, Loader2, Lock } from 'lucide-react'
 import { extractContactFromResume, preferEnteredValue } from '@/lib/contact-from-resume'
-import { toFrictionCopyText, toPreviewLetter } from '@/lib/copy-letter'
+import { toCopyHtml, toFrictionCopyText, toPreviewLetter } from '@/lib/copy-letter'
 import { loadContact, saveContact } from '@/lib/draft-storage'
 import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
 import { exportDocumentForLetter, exportFailureAction, rememberExportDocument } from '@/lib/export-document-session'
@@ -131,7 +131,19 @@ export function ResultPanel({ letter, isLoading, resume = '', exportUnlocked = f
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(toFrictionCopyText(letter, contact))
+      const plain = toFrictionCopyText(letter, contact)
+      const html = toCopyHtml(plain)
+      const clipboard = navigator.clipboard
+      if (clipboard.write && typeof ClipboardItem !== 'undefined') {
+        await clipboard.write([
+          new ClipboardItem({
+            'text/plain': new Blob([plain], { type: 'text/plain' }),
+            'text/html': new Blob([html], { type: 'text/html' }),
+          }),
+        ])
+      } else {
+        await clipboard.writeText(plain)
+      }
       track('cover_letter_copy')
       setCopied(true)
       setTimeout(() => setCopied(false), 1800)

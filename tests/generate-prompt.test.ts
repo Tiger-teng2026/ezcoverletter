@@ -214,6 +214,32 @@ test('professional, concise, and natural tones cannot bypass the factual result 
   assert.match(source, /enforceLetterFacts\(resume, job, aiResponseText\)/)
 })
 
+test('the product manager sample keeps real experience and removes SQL claims for every tone', () => {
+  const resume = 'Product Manager.\nEight years shipping B2B analytics and leading six analysts.'
+  const job = 'Product manager role.\nShip analytics, lead a team, and write requirements with SQL stakeholders.'
+  const generated = [
+    'Dear Hiring Manager,',
+    'I have eight years shipping B2B analytics and leading six analysts. I write requirements with SQL stakeholders every week.',
+    'Relational queries are central to how I work.',
+    'I doubled revenue for a client.',
+    'Could we schedule a 15-minute conversation?',
+  ].join('\n\n')
+  for (const tone of ['professional', 'concise', 'natural']) {
+    const prompt = buildSystemPrompt(tone, false, null)
+    assert.match(prompt, /resume is the only source of facts/i)
+    assert.match(prompt, /Do not turn a job requirement into a claim/)
+    const letter = enforceLetterFacts(resume, job, generated)
+    assert.match(letter, /Dear Hiring Manager,/)
+    assert.match(letter, /eight years shipping B2B analytics/i)
+    assert.match(letter, /leading six analysts/i)
+    assert.match(letter, /15-minute conversation/)
+    assert.equal(letter.toLowerCase().includes('write requirements with sql'), false)
+    assert.equal(letter.toLowerCase().includes('relational queries'), false)
+    assert.equal(letter.toLowerCase().includes('doubled revenue'), false)
+    assert.match(letter, /I would welcome the opportunity to discuss/)
+  }
+})
+
 test('cover letter generation still uses one streaming DeepSeek call', () => {
   const source = readFileSync(new URL('../app/api/generate/route.ts', import.meta.url), 'utf8')
   assert.match(source, /model: 'deepseek-chat'/)

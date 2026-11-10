@@ -459,7 +459,7 @@ export function Generator() {
             Step 5 · Review & export
           </p>
           <p className="text-[13px] text-muted-foreground">
-            Copy is included. PDF and Word for this letter are $4.99 one-time, and no subscription is required.
+            {LETTER_EXPORT_LOCKED_COPY}
           </p>
         </div>
         <ResultPanel letter={letter} isLoading={isLoading} resume={resume} exportUnlocked={letterUnlocked} />

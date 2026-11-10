@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { toFrictionCopyText } from '../lib/copy-letter.ts'
+import { toCopyHtml, toFrictionCopyText } from '../lib/copy-letter.ts'
 import { prepareLetterForExport } from '../lib/export-letter.ts'
 import { parseMatchResult } from '../lib/match-schema.ts'
 
@@ -27,6 +27,11 @@ test('free copy is plain text and omits unfilled sign-off placeholders', () => {
   assert.match(text, /- Led a cross-channel rollout\./)
   assert.match(text, /Best regards,/)
   assert.equal(text.includes('**'), false)
+  const html = toCopyHtml(text)
+  assert.match(html, /text-align:left/)
+  assert.equal(html.includes('justify'), false)
+  assert.match(html, /Dear Hiring Manager/)
+  assert.match(html, /margin:0 0 12pt 0/)
   assert.equal(text.includes('* #'), false)
   assert.equal(text.includes('# *'), false)
   assert.equal(text.includes('-- #'), false)

@@ -69,7 +69,13 @@ export const ONE_TIME_EXPORT_NOTE = `${PRO_EXPORT.name} is ${formatUsd(PRO_EXPOR
 export const SUBSCRIPTION_EXPORT_NOTE =
   'An active Creator or Pro subscription also includes PDF and Word export until that paid period ends.'
 
-export const LETTER_EXPORT_LOCKED_COPY = `Copy is included. PDF and Word for this letter are ${formatUsd(PRO_EXPORT.priceUsd)} one-time. No subscription is required. ${SUBSCRIPTION_EXPORT_NOTE}`
+export const LETTER_EXPORT_LOCKED_COPY = [
+  'Copy is included.',
+  `${PRO_EXPORT.name} — ${formatUsd(PRO_EXPORT.priceUsd)} one-time.`,
+  'One purchase unlocks both PDF and Word for this letter.',
+  'No subscription required.',
+  'Active Creator and Pro subscribers can export during their paid period.',
+].join(' ')
 
 export const QUOTA_MESSAGE =
   'AI credits for this period are used up. Upgrade to Creator or Pro for a higher allowance, or wait until the allowance resets.'

@@ -24,7 +24,13 @@ const CAUTIOUS =
   /\b(would welcome|welcome the opportunity|opportunity to (?:discuss|learn|explore)|could support|could help|happy to (?:learn|discuss)|open to learning|interested in learning|would like to discuss|i have not|i haven't|i do not have|i don't have|not something i)\b/i
 
 const SKILL_CLAIM =
-  /\b(experience(?:\s+working)?\s+with|extensive experience|hands-on experience|proficient in|skilled in|expertise in|experienced in|background in|part of my background|central to how i|how i work|how i operate|partner(?:s|ed|ing)? with|collaborat(?:e|es|ed|ing) with)\b/i
+  /\b(experience(?:\s+working)?\s+with|extensive experience|hands-on experience|proficient in|skilled in|expertise in|experienced in|background in|part of my background|central to how i|how i work|how i operate|partner(?:s|ed|ing)? with|collaborat(?:e|es|ed|ing) with|write|wrote|writing|use|used|using)\b/i
+
+const SKILL_ALIASES: Record<string, RegExp> = {
+  SQL: /\b(?:relational (?:databases?|queries|query language)|structured quer(?:y|ies))\b/i,
+}
+
+const INVENTED_OUTCOME = /\b(?:doubled|tripled|quadrupled)\b/i
 
 const MANAGEMENT_CLAIM =
   /\b(managed|managing|led|leading|supervised|directed|oversaw|guided a (?:team|group)|ran a team|built a team|direct reports)\b/i
@@ -74,9 +80,20 @@ function resumeHasLeadership(resume: string) {
   return /\b(led|lead|leading|managed|managing|manager|supervised|directed|head of)\b/i.test(resume)
 }
 
+function mentionsMissingSkill(text: string, acronyms: string[]) {
+  if (acronyms.some((term) => new RegExp(`\\b${term}\\b`, 'i').test(text))) return true
+  return acronyms.some((term) => SKILL_ALIASES[term]?.test(text))
+}
+
 function claimsMissingSkill(text: string, acronyms: string[]) {
-  if (CAUTIOUS.test(text) || acronyms.length === 0 || !SKILL_CLAIM.test(text)) return false
-  return acronyms.some((term) => new RegExp(`\\b${term}\\b`, 'i').test(text))
+  if (CAUTIOUS.test(text) || !mentionsMissingSkill(text, acronyms)) return false
+  return SKILL_CLAIM.test(text) || /\b(i|my)\b/i.test(text)
+}
+
+function claimsInventedOutcome(text: string, resume: string) {
+  if (CAUTIOUS.test(text) || !INVENTED_OUTCOME.test(text)) return false
+  const word = text.match(INVENTED_OUTCOME)?.[0] || ''
+  return word !== '' && !new RegExp(`\\b${word}\\b`, 'i').test(resume)
 }
 
 function claimsUngroundedManagement(text: string, resume: string) {
@@ -95,7 +112,8 @@ function isUnsupportedClaim(text: string, resume: string, acronyms: string[], kn
     claimsMissingSkill(text, acronyms) ||
     inventedMetric(text, knownNumbers) ||
     claimsUngroundedManagement(text, resume) ||
-    claimsInventedClientOutcome(text, resume)
+    claimsInventedClientOutcome(text, resume) ||
+    claimsInventedOutcome(text, resume)
   )
 }
 
@@ -111,13 +129,17 @@ function rewriteSentence(sentence: string, resume: string, acronyms: string[], k
     return { text: sentence, dropped: false }
   }
 
-  const clauses = sentence.split(/\s+and\s+/i)
+  const clauses = sentence.split(/\s+and\s+|,\s+/i).map((clause) => clause.trim()).filter(Boolean)
   if (clauses.length < 2) return { text: null, dropped: true }
 
   const kept = clauses.filter((clause) => !isUnsupportedClaim(clause, resume, acronyms, knownNumbers))
   if (kept.length === 0) return { text: null, dropped: true }
-  const text = kept.join(' and ').replace(/[,;]\s*$/, '').trim()
-  return { text: /[.!?]$/.test(text) ? text : `${text}.`, dropped: true }
+  const text = kept
+    .map((clause) => clause.replace(/[,;]\s*$/, '').trim())
+    .filter(Boolean)
+    .map((clause) => (/[.!?]$/.test(clause) ? clause : `${clause}.`))
+    .join(' ')
+  return { text, dropped: true }
 }
 
 function cautiousSentence(resume: string, topic: string | null) {

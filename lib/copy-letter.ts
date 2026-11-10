@@ -66,3 +66,24 @@ export function toFrictionCopyText(letter: string, contact?: SignOffContact): st
   if (!body) return signOff
   return `${body}\n\n${signOff}`
 }
+
+function escapeCopyHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/** Left-aligned HTML clipboard for Word. Paragraph spacing stays; justification is not applied. */
+export function toCopyHtml(plainText: string) {
+  const paragraphs = plainText
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map(
+      (paragraph) =>
+        `<p style="text-align:left;margin:0 0 12pt 0;line-height:1.15;font-family:Calibri,Arial,sans-serif;">${escapeCopyHtml(paragraph).replace(/\n/g, '<br>')}</p>`,
+    )
+    .join('')
+  return `<!DOCTYPE html><html><body>${paragraphs}</body></html>`
+}
