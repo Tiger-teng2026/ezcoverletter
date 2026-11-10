@@ -64,7 +64,8 @@ test('the system prompt forbids unsupported time spans and a second call to acti
   const prompt = buildSystemPrompt('natural', false, null)
   assert.match(prompt, /Never turn "six analysts" into "six years" or "six of those years."/)
   assert.match(prompt, /45% traffic increase/)
-  assert.match(prompt, /I have eight years of experience in B2B analytics and have led a team of six analysts/)
+  assert.match(prompt, /I have eight years of experience shipping B2B analytics, and I have led a team of six analysts/)
+  assert.match(prompt, /Do not shorten that to "eight years shipping"/)
   assert.match(prompt, /Never write "much of that time" or "for most of those years"/)
 })
 
@@ -140,7 +141,7 @@ test('a management requirement and a client result are not rewritten as experien
     'Dear Hiring Manager,\n\nI have managed engineering teams throughout my career. I have eight years shipping B2B analytics.',
   )
   assert.equal(managed.toLowerCase().includes('managed engineering teams'), false)
-  assert.match(managed, /eight years shipping B2B analytics/)
+  assert.match(managed, /eight years of experience shipping B2B analytics/)
 
   const client = enforceLetterFacts(
     PM_RESUME,
@@ -159,7 +160,7 @@ test('resume facts for eight years and six analysts survive factual cleanup', ()
     SQL_JOB,
     `${TRUE_BODY}\n\n${FORBIDDEN_SQL}\n\nI have managed a team of 12 engineers.`,
   )
-  assert.match(letter, /eight years shipping B2B analytics/i)
+  assert.match(letter, /eight years of experience shipping B2B analytics/i)
   assert.match(letter, /led six analysts/i)
   assert.equal(letter.includes('12'), false)
   assert.equal(letter.toLowerCase().includes('sql stakeholders is central'), false)
@@ -173,7 +174,7 @@ test('ordinary job words do not remove a truthful sentence', () => {
   )
   assert.match(letter, /Dear Hiring Manager,/)
   assert.match(letter, /roadmap and weekly releases/)
-  assert.match(letter, /eight years shipping B2B analytics/)
+  assert.match(letter, /eight years of experience shipping B2B analytics/)
   assert.match(letter, /led six analysts/)
 })
 
@@ -189,11 +190,11 @@ test('removing an unsupported claim leaves the greeting, experience, and closing
     ].join('\n\n'),
   )
   assert.match(letter, /^Dear Hiring Manager,/)
-  assert.match(letter, /eight years shipping B2B analytics/)
+  assert.match(letter, /eight years of experience shipping B2B analytics/)
   assert.match(letter, /led six analysts/)
-  assert.match(letter, /excited to help with the roadmap/)
-  assert.match(letter, /I would welcome the opportunity to discuss how my product management experience could support your team's work with SQL stakeholders/)
+  assert.equal(letter.toLowerCase().includes('roadmap'), false)
   assert.match(letter, /15-minute conversation/)
+  assert.match(letter, /could support your team's work with SQL stakeholders/)
   assert.equal(letter.toLowerCase().includes('extensive experience working with sql'), false)
   assert.notEqual(letter.trim(), 'Dear Hiring Manager,')
 })
@@ -214,6 +215,63 @@ test('professional, concise, and natural tones cannot bypass the factual result 
   assert.match(source, /enforceLetterFacts\(resume, job, aiResponseText\)/)
 })
 
+test('real product-manager wording cannot turn the job into personal experience', () => {
+  const resume = 'Alex Chen, product manager.\n\nEight years shipping B2B analytics and leading six analysts.'
+  const job = 'Product manager role.\n\nShip analytics, lead a team, and write requirements with SQL stakeholders.'
+  const generated = [
+    'Dear Hiring Manager,',
+    'I have eight years shipping B2B analytics and leading six analysts.',
+    'Writing requirements for SQL stakeholders.',
+    'Being precise about tables, fields, and definitions.',
+    "I've seen vague requirements cost teams weeks.",
+    'Tight requirements make a release feel effortless.',
+    'My analytics background taught me to be precise about tables, fields, and definitions.',
+    'I would welcome the opportunity to discuss how my product management experience could support your team.',
+    'Could we schedule a 15-minute conversation?',
+  ].join('\n\n')
+  for (const tone of ['professional', 'concise', 'natural']) {
+    const prompt = buildSystemPrompt(tone, false, null)
+    assert.match(prompt, /Being precise about tables, fields, and definitions/)
+    assert.match(prompt, /I've seen vague requirements cost teams weeks/)
+    const letter = enforceLetterFacts(resume, job, generated)
+    assert.match(letter, /Dear Hiring Manager,/)
+    assert.match(letter, /eight years of experience shipping B2B analytics/i)
+    assert.match(letter, /leading six analysts/i)
+    assert.match(letter, /15-minute conversation/)
+    assert.match(letter, /I would welcome the opportunity to discuss/)
+    assert.equal((letter.match(/I would welcome the opportunity/g) || []).length, 1)
+    for (const banned of ['sql', 'tables', 'fields', 'definitions', 'requirements', 'effortless', 'weeks']) {
+      assert.equal(letter.toLowerCase().includes(banned), false, banned)
+    }
+  }
+})
+
+test('invented duties, methods, customers, and preferences are removed for every tone', () => {
+  const resume = 'Alex Chen, product manager.\n\nEight years shipping B2B analytics and leading six analysts.'
+  const job = 'Product manager role.\n\nShip analytics, lead a team, and write requirements with SQL stakeholders.'
+  const generated = [
+    'Dear Hiring Manager,',
+    'I am a product manager with eight years shipping B2B analytics and leading six analysts.',
+    'I bring a track record of analytics product ownership.',
+    'In my current capacity I run end-to-end delivery for business customers.',
+    'Roadmap management is how I prefer to work.',
+    'I would welcome the opportunity to discuss how my product management experience could support your team\'s work with SQL stakeholders.',
+    'Could we schedule a 15-minute conversation?',
+  ].join('\n\n')
+  for (const tone of ['professional', 'concise', 'natural']) {
+    const prompt = buildSystemPrompt(tone, false, null)
+    assert.match(prompt, /Tone changes the wording only/)
+    const letter = enforceLetterFacts(resume, job, generated)
+    assert.match(letter, /eight years of experience shipping B2B analytics/i)
+    assert.match(letter, /leading six analysts/i)
+    assert.match(letter, /could support your team's work with SQL stakeholders/)
+    assert.match(letter, /15-minute conversation/)
+    for (const banned of ['track record', 'ownership', 'current capacity', 'end-to-end', 'customers', 'roadmap', 'prefer']) {
+      assert.equal(letter.toLowerCase().includes(banned), false, banned)
+    }
+  }
+})
+
 test('the product manager sample keeps real experience and removes SQL claims for every tone', () => {
   const resume = 'Product Manager.\nEight years shipping B2B analytics and leading six analysts.'
   const job = 'Product manager role.\nShip analytics, lead a team, and write requirements with SQL stakeholders.'
@@ -230,13 +288,36 @@ test('the product manager sample keeps real experience and removes SQL claims fo
     assert.match(prompt, /Do not turn a job requirement into a claim/)
     const letter = enforceLetterFacts(resume, job, generated)
     assert.match(letter, /Dear Hiring Manager,/)
-    assert.match(letter, /eight years shipping B2B analytics/i)
+    assert.match(letter, /eight years of experience shipping B2B analytics/i)
     assert.match(letter, /leading six analysts/i)
     assert.match(letter, /15-minute conversation/)
     assert.equal(letter.toLowerCase().includes('write requirements with sql'), false)
     assert.equal(letter.toLowerCase().includes('relational queries'), false)
     assert.equal(letter.toLowerCase().includes('doubled revenue'), false)
     assert.match(letter, /I would welcome the opportunity to discuss/)
+  }
+})
+
+test('fact cleanup keeps of experience in the years sentence for every tone', () => {
+  const resume = 'Alex Chen, product manager.\n\nEight years shipping B2B analytics and leading six analysts.'
+  const job = 'Product manager role.\n\nShip analytics, lead a team, and write requirements with SQL stakeholders.'
+  const generated = [
+    'Dear Hiring Manager,',
+    'I have eight years shipping B2B analytics, and I have led a team of six analysts.',
+    'I bring a track record of analytics product ownership.',
+    'Could we schedule a 15-minute conversation?',
+  ].join('\n\n')
+  const expected = 'I have eight years of experience shipping B2B analytics, and I have led a team of six analysts.'
+  for (const tone of ['professional', 'concise', 'natural']) {
+    const prompt = buildSystemPrompt(tone, false, null)
+    assert.match(prompt, /I have eight years of experience shipping B2B analytics, and I have led a team of six analysts/)
+    assert.match(prompt, /Keep the words "of experience"/)
+    const letter = enforceLetterFacts(resume, job, generated)
+    assert.match(letter, /I have eight years of experience shipping B2B analytics, and I have led a team of six analysts\./)
+    assert.equal(letter.includes('I have eight years shipping '), false)
+    assert.equal(letter.toLowerCase().includes('track record'), false)
+    assert.match(letter, /15-minute conversation/)
+    assert.equal(letter.includes(expected), true)
   }
 })
 
