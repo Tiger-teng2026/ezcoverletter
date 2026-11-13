@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { LoginForm } from '@/components/login-form'
-import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
+import { downloadBlob } from '@/lib/export-download'
 import { formatSavedDate, savedResultTitle } from '@/lib/history-display'
 import { formatUsd, PLANS, PRO_EXPORT } from '@/lib/plans'
 
@@ -50,11 +50,14 @@ export function AccountPanel({
       setCancelMessage(payload?.error || 'This letter could not be downloaded.')
       return
     }
-    if (format === 'pdf') {
-      printHtmlDocument(await response.text())
+    const blob = await response.blob()
+    const type = response.headers.get('content-type') || ''
+    const expected = format === 'pdf' ? 'application/pdf' : 'wordprocessingml'
+    if (blob.size < 8 || !type.includes(expected)) {
+      setCancelMessage(format === 'pdf' ? 'PDF export failed.' : 'Word export failed.')
       return
     }
-    downloadBlob(await response.blob(), 'cover-letter.doc')
+    downloadBlob(blob, format === 'pdf' ? 'cover-letter.pdf' : 'cover-letter.docx')
   }
 
   function load() {

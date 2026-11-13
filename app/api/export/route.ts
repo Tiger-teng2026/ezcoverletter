@@ -1,4 +1,4 @@
-import { buildPrintDocumentHtml, buildWordDocumentHtml } from '@/lib/export-letter'
+import { buildDocx, buildPdf, DOCX_CONTENT_TYPE, DOCX_FILENAME, PDF_CONTENT_TYPE, PDF_FILENAME } from '@/lib/export-files'
 import { entitlementFromRequest, noStoreJson } from '@/lib/entitlement'
 import { getLedger, getTestLedger, oneTimeExportRevoked, testingBilling } from '@/lib/billing/runtime'
 import { effectivePlan } from '@/lib/billing/access'
@@ -79,30 +79,20 @@ export async function POST(req: Request) {
         linkedin: contact.linkedin || purchased.contact.linkedin || '',
       }
     : contact
-  let html: string
+  let bytes: Uint8Array
   try {
-    html = format === 'pdf' ? buildPrintDocumentHtml(exportLetter, exportContact) : buildWordDocumentHtml(exportLetter, exportContact)
+    bytes = format === 'pdf' ? await buildPdf(exportLetter, exportContact) : buildDocx(exportLetter, exportContact)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Export failed.'
     return noStoreJson({ error: message }, 400)
   }
 
-  if (format === 'word') {
-    return new Response(`\ufeff${html}`, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/msword; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="cover-letter.doc"',
-        'Cache-Control': 'no-store',
-        'X-Content-Type-Options': 'nosniff',
-      },
-    })
-  }
-
-  return new Response(html, {
+  const pdf = format === 'pdf'
+  return new Response(Buffer.from(bytes), {
     status: 200,
     headers: {
-      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Type': pdf ? PDF_CONTENT_TYPE : DOCX_CONTENT_TYPE,
+      'Content-Disposition': `attachment; filename="${pdf ? PDF_FILENAME : DOCX_FILENAME}"`,
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
     },

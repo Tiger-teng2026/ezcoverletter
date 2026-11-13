@@ -14,6 +14,7 @@ import { interpretUnlockResponse } from '../lib/unlock-result.ts'
 import { POST as unlockPost } from '../app/api/unlock/route.ts'
 import { POST as checkoutPost } from '../app/api/checkout/route.ts'
 import { POST as exportPost } from '../app/api/export/route.ts'
+import { docxDocumentXml, pdfText, responseBytes } from './export-bytes.ts'
 import { MemoryLedger } from '../lib/billing/ledger.ts'
 import { useTestLedger } from '../lib/billing/runtime.ts'
 
@@ -306,27 +307,28 @@ describe('payment verification and export authorization', { concurrency: 1 }, ()
     assert.ok(openEntitlement(token, TEST_PRODUCT_ID))
 
     const pdf = await exportPost(exportRequest(token, { format: 'pdf', letter: LETTER, contact: CONTACT }))
-    const pdfHtml = await pdf.text()
+    const pdfBytes = await responseBytes(pdf)
     assert.equal(pdf.status, 200)
-    assert.match(pdf.headers.get('content-type') || '', /text\/html/)
-    assert.match(pdfHtml, /id="letter"/)
-    assert.match(pdfHtml, /I shipped the billing pipeline/)
-    assert.match(pdfHtml, /Jane Doe/)
-    assert.match(pdfHtml, /jane@example.com/)
-    assert.doesNotMatch(pdfHtml, /\[User Full Name\]/)
+    assert.match(pdf.headers.get('content-type') || '', /application\/pdf/)
+    assert.match(pdf.headers.get('content-disposition') || '', /cover-letter\.pdf/)
+    const pdfTextBody = pdfText(pdfBytes)
+    assert.match(pdfTextBody, /I shipped the billing pipeline/)
+    assert.match(pdfTextBody, /Jane Doe/)
+    assert.match(pdfTextBody, /jane@example.com/)
+    assert.doesNotMatch(pdfTextBody, /\[User Full Name\]/)
 
     const word = await exportPost(exportRequest(token, { format: 'word', letter: LETTER, contact: CONTACT }))
-    const wordHtml = await word.text()
+    const wordXml = docxDocumentXml(await responseBytes(word))
     assert.equal(word.status, 200)
-    assert.match(word.headers.get('content-type') || '', /application\/msword/)
-    assert.match(word.headers.get('content-disposition') || '', /cover-letter\.doc/)
-    assert.match(wordHtml, /Jane Doe/)
-    assert.match(wordHtml, /\+1 555 0100/)
-    assert.match(wordHtml, /linkedin\.com\/in\/janedoe/)
+    assert.match(word.headers.get('content-type') || '', /wordprocessingml\.document/)
+    assert.match(word.headers.get('content-disposition') || '', /cover-letter\.docx/)
+    assert.match(wordXml, /Jane Doe/)
+    assert.match(wordXml, /\+1 555 0100/)
+    assert.match(wordXml, /linkedin\.com\/in\/janedoe/)
 
     const refreshed = await exportPost(exportRequest(token, { format: 'pdf', letter: LETTER, contact: CONTACT }))
     assert.equal(refreshed.status, 200)
-    assert.match(await refreshed.text(), /I shipped the billing pipeline/)
+    assert.match(pdfText(await responseBytes(refreshed)), /I shipped the billing pipeline/)
   })
 
   test('localStorage-style unlocked flag cannot authorize export', async () => {

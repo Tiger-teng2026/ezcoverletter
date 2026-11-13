@@ -1,5 +1,6 @@
 import {
   resolveExportContact,
+  stripTrailingSignOff,
   type SignOffContact,
   withExportSignOff,
 } from '@/lib/sign-off'
@@ -33,7 +34,11 @@ export function prepareLetterForExport(letter: string, contact?: SignOffContact)
       'Please fill in your Full Name, Phone, Email, and LinkedIn before exporting PDF/Word.',
     )
   }
-  const prepared = withExportSignOff(normalizeExportText(letter), resolved)
+  const body = stripTrailingSignOff(stripTrailingSignOff(normalizeExportText(letter))).trim()
+  if (!body) {
+    throw new Error('There is no cover letter to export.')
+  }
+  const prepared = withExportSignOff(body, resolved)
   // Hard guarantee: paid exports must never ship bracket placeholders.
   if (/\[[^\]]+\]/.test(prepared)) {
     throw new Error(

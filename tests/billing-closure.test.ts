@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { POST as subscriptionCheckout } from '../app/api/billing/checkout/route.ts'
 import { POST as exportPost } from '../app/api/export/route.ts'
+import { docxDocumentXml, responseBytes } from './export-bytes.ts'
 import { POST as webhookPost } from '../app/api/billing/webhook/route.ts'
 import { effectivePlan } from '../lib/billing/access.ts'
 import { paidAccountId, PAID_PERIOD } from '../lib/billing/cycle.ts'
@@ -109,7 +110,7 @@ test('a refund blocks only that document, and a repeated payment event does not 
       body: JSON.stringify({ format: 'word', documentId: secondId, contact: CONTACT }),
     }))
     assert.equal(kept.status, 200)
-    assert.match(await kept.text(), /Second purchased letter/)
+    assert.match(docxDocumentXml(await responseBytes(kept)), /Second purchased letter/)
     assert.equal(await ledger.isDocumentPaid(USER, firstId), false)
     assert.equal(await ledger.isDocumentPaid(USER, secondId), true)
   } finally {
@@ -290,7 +291,7 @@ test('one document keeps a single checkout and a paid export serves the saved sn
       }),
     }))
     assert.equal(response.status, 200)
-    const body = await response.text()
+    const body = docxDocumentXml(await responseBytes(response))
     assert.match(body, /Saved snapshot letter/)
     assert.doesNotMatch(body, /different letter/)
   } finally {

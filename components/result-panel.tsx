@@ -5,7 +5,7 @@ import { Check, Copy, Download, FileText, Loader2, Lock } from 'lucide-react'
 import { extractContactFromResume, preferEnteredValue } from '@/lib/contact-from-resume'
 import { toCopyHtml, toFrictionCopyText, toPreviewLetter } from '@/lib/copy-letter'
 import { loadContact, saveContact } from '@/lib/draft-storage'
-import { downloadBlob, printHtmlDocument } from '@/lib/export-download'
+import { downloadBlob } from '@/lib/export-download'
 import { exportDocumentForLetter, exportFailureAction, rememberExportDocument } from '@/lib/export-document-session'
 import { track } from '@/lib/ga'
 import { formatUsd, LETTER_EXPORT_LOCKED_COPY, PRO_EXPORT } from '@/lib/plans'
@@ -172,21 +172,14 @@ export function ResultPanel({ letter, isLoading, resume = '', exportUnlocked = f
   }
 
   async function finishExportResponse(res: Response, format: 'pdf' | 'word') {
-    if (format === 'pdf') {
-      const html = await res.text()
-      if (!html.includes('id="letter"')) {
-        setProHint('Export failed.')
-        return
-      }
-      printHtmlDocument(html)
-      return
-    }
     const blob = await res.blob()
-    if (blob.size === 0) {
-      setProHint('Word export failed.')
+    const type = res.headers.get('content-type') || ''
+    const expected = format === 'pdf' ? 'application/pdf' : 'wordprocessingml'
+    if (blob.size < 8 || !type.includes(expected)) {
+      setProHint(format === 'pdf' ? 'PDF export failed.' : 'Word export failed.')
       return
     }
-    downloadBlob(blob, 'cover-letter.doc')
+    downloadBlob(blob, format === 'pdf' ? 'cover-letter.pdf' : 'cover-letter.docx')
   }
 
   function requireContactForExport(): boolean {

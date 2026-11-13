@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { POST as exportPost } from '../app/api/export/route.ts'
+import { pdfText, responseBytes } from './export-bytes.ts'
 import { MemoryLedger } from '../lib/billing/ledger.ts'
 import { useTestLedger } from '../lib/billing/runtime.ts'
 
@@ -47,16 +48,17 @@ test('a purchased document still exports, and an unpaid document does not', asyn
     assert.equal(confirmed.granted, true)
 
     const paid = await exportPost(exportRequest(paidId))
-    const html = await paid.text()
+    const text = pdfText(await responseBytes(paid))
     assert.equal(paid.status, 200)
-    assert.match(html, /Dear Hiring Manager,/)
-    assert.match(html, /I built the Activation Hub/)
-    assert.match(html, /Jane Doe/)
-    assert.match(html, /\+1 555 0100/)
-    assert.match(html, /jane@example.com/)
-    assert.match(html, /https:\/\/linkedin.com\/in\/janedoe/)
-    assert.doesNotMatch(html, /A different unpaid letter/)
-    assert.doesNotMatch(html, /EzCoverLetter|AI Job Search Toolkit/)
+    assert.match(paid.headers.get('content-type') || '', /application\/pdf/)
+    assert.match(text, /Dear Hiring Manager,/)
+    assert.match(text, /I built the Activation Hub/)
+    assert.match(text, /Jane Doe/)
+    assert.match(text, /\+1 555 0100/)
+    assert.match(text, /jane@example.com/)
+    assert.match(text, /https:\/\/linkedin.com\/in\/janedoe/)
+    assert.doesNotMatch(text, /A different unpaid letter/)
+    assert.doesNotMatch(text, /EzCoverLetter|AI Job Search Toolkit/)
 
     const unpaid = await exportPost(exportRequest(unpaidId))
     const unpaidText = await unpaid.text()
